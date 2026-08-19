@@ -13,8 +13,8 @@
           </div>
         </div>
         <div class="header-tags">
+          <span v-if="userRoleName" class="badge badge-primary">Rol: {{ userRoleName }}</span>
           <span class="badge badge-amber">Emergencia Sismo 2026</span>
-          <span class="badge badge-cyan">Caracas / La Guaira</span>
         </div>
       </div>
 
@@ -97,42 +97,62 @@
 
         <div v-if="isProcessing" class="typing-indicator">
           <div class="typing-dots"><span></span><span></span><span></span></div>
-          <span class="typing-label">Agente NLP analizando relato e indexando foto en ChromaDB...</span>
+          <span class="typing-label">Agente NLP analizando relato e indexando en ChromaDB...</span>
         </div>
       </div>
 
-      <!-- QUICK ACTION PRESETS -->
-      <div v-if="messages.length <= 2" class="quick-cards-grid">
-        <button class="quick-action-card lost" @click="selectQuickOption('lost')">
+      <!-- ROLE-BASED QUICK ACTION PRESETS -->
+      <div v-if="messages.length <= 2" :class="['quick-cards-grid', isRescuerOrAdmin ? 'single-col' : '']">
+        <!-- LOST PET CARD: ONLY VISIBLE FOR CITIZENS / DAMNIFICADOS OR GUESTS -->
+        <button 
+          v-if="!isRescuerOrAdmin" 
+          class="quick-action-card lost" 
+          @click="selectQuickOption('lost')"
+        >
           <div class="quick-icon">🔍</div>
           <div class="quick-text">
             <strong>Perdí a mi mascota</strong>
-            <span>Generar reporte de búsqueda familiar</span>
+            <span>Generar reporte de búsqueda familiar damnificada</span>
           </div>
         </button>
-        <button class="quick-action-card found" @click="selectQuickOption('found')">
+
+        <!-- RESCUE / FOUND CARD: VISIBLE TO EVERYONE, EMPHASIZED FOR RESCUERS -->
+        <button 
+          class="quick-action-card found" 
+          @click="selectQuickOption('found')"
+        >
           <div class="quick-icon">🏡</div>
           <div class="quick-text">
-            <strong>Encontré / Rescaté una mascota</strong>
-            <span>Registrar animal para refugio y QR</span>
+            <strong>{{ isRescuerOrAdmin ? 'Registrar Mascota Rescatada en Campo' : 'Encontré / Rescaté una mascota' }}</strong>
+            <span>{{ isRescuerOrAdmin ? 'Generar código QR de campaña e ingresar a inventario de refugio' : 'Registrar animal para refugio y QR' }}</span>
           </div>
         </button>
       </div>
 
-      <!-- INPUT BAR -->
+      <!-- INPUT BAR WITH REAL MICROPHONE AUDIO RECORDING -->
       <div class="chat-input-zone">
         <div class="input-tools-bar">
           <label class="tool-btn">
             <span>📷 Subir Foto</span>
             <input type="file" @change="handlePhotoUpload" accept="image/*" style="display:none;" />
           </label>
-          <button class="tool-btn" @click="simulateVoiceInput">
-            <span>🎙️ Simular Nota de Voz</span>
+
+          <!-- REAL MICROPHONE VOICE BUTTON -->
+          <button 
+            :class="['tool-btn', isRecordingAudio ? 'btn-recording-pulse' : '']" 
+            @click="toggleAudioRecording"
+          >
+            <span>{{ isRecordingAudio ? '🔴 Detener Grabación (Escuchando...)' : '🎙️ Grabar Nota de Voz' }}</span>
           </button>
+
           <div v-if="uploadedPhotoBase64" class="attached-preview-pill">
             <img :src="uploadedPhotoBase64" class="mini-thumb" />
             <span>{{ selectedPhotoName || 'Foto Adjunta' }}</span>
             <button class="btn-remove-attachment" @click="removeAttachedPhoto">✕</button>
+          </div>
+
+          <div v-if="voiceTranscriptNotice" class="voice-status-pill">
+            <span>{{ voiceTranscriptNotice }}</span>
           </div>
         </div>
 
@@ -140,7 +160,7 @@
           <textarea 
             v-model="userInput" 
             @keydown.enter.prevent="sendMessage"
-            placeholder="Describe a la mascota (ej: Vi un perrito negro con pecho blanco cerca de Catia, parece asustado y cojea de una pata)..."
+            placeholder="Describe a la mascota por texto o usa el micrófono de nota de voz (ej: Encontramos un perrito negro con pecho blanco cerca de Caricuao)..."
             rows="2"
           ></textarea>
           <button class="btn-gradient btn-send" :disabled="!userInput.trim() || isProcessing" @click="sendMessage">
@@ -153,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
 const defaultFallbackPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
 
@@ -164,6 +184,97 @@ const selectedPhotoName = ref('')
 const uploadedPhotoBase64 = ref('')
 const currentReportType = ref('found')
 
+// USER ROLE CONTEXT
+const currentUser = ref(null)
+
+const isRescuerOrAdmin = computed(() => {
+  if (!currentUser.value) return false
+  return currentUser.value.role === 'rescuer' || currentUser.value.role === 'shelter_admin'
+})
+
+const userRoleName = computed(() => {
+  if (!currentUser.value) return ''
+  switch(currentUser.value.role) {
+    case 'rescuer': return 'Rescatista de Campo'
+    case 'shelter_admin': return 'Coordinadora de Refugio'
+    case 'citizen': return 'Ciudadano Damnificado'
+    case 'adopter': return 'Adoptante'
+    default: return currentUser.value.role
+  }
+})
+
+// REAL SPEECH RECOGNITION (WEB SPEECH API)
+const isRecordingAudio = ref(false)
+const voiceTranscriptNotice = ref('')
+let recognition = null
+
+const initSpeechRecognition = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition()
+    recognition.lang = 'es-ES'
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    recognition.onstart = () => {
+      isRecordingAudio.value = true
+      voiceTranscriptNotice.value = '🎙️ Escuchando... habla al micrófono'
+    }
+
+    recognition.onresult = (event) => {
+      let finalTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' '
+        }
+      }
+      if (finalTranscript) {
+        userInput.value = (userInput.value ? userInput.value + ' ' : '') + finalTranscript.trim()
+      }
+    }
+
+    recognition.onerror = (event) => {
+      console.warn('Speech recognition notice:', event.error)
+      isRecordingAudio.value = false
+      if (event.error === 'not-allowed') {
+        voiceTranscriptNotice.value = '⚠️ Permiso de micrófono denegado'
+      } else {
+        voiceTranscriptNotice.value = ''
+      }
+    }
+
+    recognition.onend = () => {
+      isRecordingAudio.value = false
+      voiceTranscriptNotice.value = ''
+    }
+  }
+}
+
+const toggleAudioRecording = () => {
+  if (!recognition) {
+    initSpeechRecognition()
+  }
+
+  if (!recognition) {
+    // Fallback si el navegador no soporta Web Speech API
+    userInput.value = 'Transcripción de voz: "Hola, acabamos de rescatar un perro mestizo mediano negro con manchas blancas en Caricuao. Tiene la pata lastimada y requiere atención."'
+    voiceTranscriptNotice.value = '🎙️ Nota de voz de prueba cargada'
+    setTimeout(() => { voiceTranscriptNotice.value = '' }, 3000)
+    return
+  }
+
+  if (isRecordingAudio.value) {
+    recognition.stop()
+    isRecordingAudio.value = false
+  } else {
+    try {
+      recognition.start()
+    } catch (e) {
+      console.log(e)
+    }
+  }
+}
+
 const messages = ref([
   {
     sender: 'bot',
@@ -171,6 +282,18 @@ const messages = ref([
     time: 'Ahora'
   }
 ])
+
+const loadUserSession = () => {
+  try {
+    const saved = localStorage.getItem('refuguia_user')
+    if (saved) {
+      currentUser.value = JSON.parse(saved)
+      if (currentUser.value.role === 'rescuer' || currentUser.value.role === 'shelter_admin') {
+        currentReportType.value = 'found'
+      }
+    }
+  } catch (e) {}
+}
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -187,10 +310,6 @@ const selectQuickOption = (type) => {
   } else {
     userInput.value = 'Rescatamos a un perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao. Tiene una patita lastimada y tiembla de frío.'
   }
-}
-
-const simulateVoiceInput = () => {
-  userInput.value = 'Transcripción de voz: "Hola, encontramos a un perro mestizo negro con el pecho blanco cerca de la autopista. Cojea de una patita y está muy desorientado."'
 }
 
 const handlePhotoUpload = (e) => {
@@ -223,6 +342,10 @@ const getQrImageUrl = (qrBadge) => {
 
 const sendMessage = async () => {
   if (!userInput.value.trim() || isProcessing.value) return
+
+  if (isRecordingAudio.value && recognition) {
+    recognition.stop()
+  }
 
   const textToSend = userInput.value.trim()
   const attachedPhoto = uploadedPhotoBase64.value
@@ -294,7 +417,15 @@ const sendMessage = async () => {
 }
 
 onMounted(() => {
+  loadUserSession()
+  initSpeechRecognition()
   scrollToBottom()
+})
+
+onUnmounted(() => {
+  if (recognition) {
+    recognition.stop()
+  }
 })
 </script>
 
@@ -577,6 +708,10 @@ onMounted(() => {
   padding: 0 1.5rem 1rem 1.5rem;
 }
 
+.quick-cards-grid.single-col {
+  grid-template-columns: 1fr;
+}
+
 .quick-action-card {
   display: flex;
   align-items: center;
@@ -622,6 +757,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.65rem;
   margin-bottom: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .tool-btn {
@@ -633,12 +769,34 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .tool-btn:hover {
   color: var(--text-main);
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-recording-pulse {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: #ef4444 !important;
+  color: #fca5a5 !important;
+  animation: pulseRecording 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseRecording {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+.voice-status-pill {
+  font-size: 0.72rem;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
 }
 
 .attached-preview-pill {
