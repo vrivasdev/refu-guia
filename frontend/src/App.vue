@@ -96,16 +96,12 @@
               <span class="dropdown-chevron">▼</span>
             </div>
 
-            <!-- DROPDOWN ACCOUNT MENU -->
+            <!-- ELEGANT & CLEAN DROPDOWN (NO REDUNDANT DATA) -->
             <div v-if="isUserMenuOpen" class="user-dropdown-menu glass-card" @click.stop>
-              <div class="dropdown-user-header">
-                <div class="d-avatar">{{ getUserInitials(currentUser.name) }}</div>
-                <div class="d-info">
-                  <strong>{{ currentUser.name }}</strong>
-                  <span class="d-email">{{ currentUser.email }}</span>
-                  <span :class="['badge', getRoleBadgeClass(currentUser.role)]" style="margin-top:4px;">
-                    {{ currentUser.role_label }}
-                  </span>
+              <div class="dropdown-meta-box">
+                <div class="user-email-text">{{ currentUser.email }}</div>
+                <div class="status-indicator">
+                  <span class="dot-online"></span> Sesión activa segura
                 </div>
               </div>
 
@@ -113,11 +109,12 @@
 
               <div class="dropdown-actions">
                 <button class="btn-dropdown-action" @click="openLoginForSwitch">
-                  <span>🔄 Cambiar de Usuario / Rol</span>
+                  <span class="action-icon">🔄</span>
+                  <span>Cambiar de Usuario / Rol</span>
                 </button>
 
                 <button class="btn-dropdown-logout" @click="handleLogout">
-                  <span class="logout-icon">🚪</span>
+                  <span class="action-icon">🚪</span>
                   <span>Cerrar Sesión</span>
                 </button>
               </div>
@@ -349,7 +346,7 @@ const getRoleBadgeClass = (role) => {
 
 .user-profile-chip:hover, .user-profile-chip.chip-active {
   border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(99, 102, 241, 0.18);
   box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
 }
 
@@ -380,7 +377,7 @@ const getRoleBadgeClass = (role) => {
 .dropdown-chevron {
   font-size: 0.65rem;
   color: var(--text-muted);
-  margin-left: 0.2rem;
+  margin-left: 0.3rem;
   transition: transform 0.2s ease;
 }
 
@@ -388,17 +385,17 @@ const getRoleBadgeClass = (role) => {
   transform: rotate(180deg);
 }
 
-/* DROPDOWN MENU */
+/* CLEAN STREAMLINED DROPDOWN */
 .user-dropdown-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 260px;
+  width: 230px;
   background: #0f172a;
   border: 1px solid rgba(99, 102, 241, 0.4);
   border-radius: var(--radius-md);
-  padding: 1rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  padding: 0.85rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
   z-index: 1500;
   animation: fadeIn 0.15s ease;
 }
@@ -408,62 +405,62 @@ const getRoleBadgeClass = (role) => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.dropdown-user-header {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-
-.d-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #38bdf8);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
-.d-info {
+.dropdown-meta-box {
   display: flex;
   flex-direction: column;
+  gap: 3px;
+  padding: 0 4px 4px 4px;
 }
 
-.d-info strong {
-  font-size: 0.85rem;
-  color: #ffffff;
+.user-email-text {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.d-email {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: #34d399;
+  font-weight: 600;
+}
+
+.dot-online {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
 }
 
 .dropdown-divider {
   height: 1px;
   background: var(--border);
-  margin: 0.85rem 0;
+  margin: 0.65rem 0;
 }
 
 .dropdown-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .btn-dropdown-action {
   width: 100%;
-  padding: 0.6rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-main);
   font-size: 0.78rem;
   font-weight: 600;
-  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -475,12 +472,12 @@ const getRoleBadgeClass = (role) => {
 
 .btn-dropdown-logout {
   width: 100%;
-  padding: 0.65rem 0.75rem;
-  background: rgba(244, 63, 94, 0.15);
-  border: 1px solid rgba(244, 63, 94, 0.4);
+  padding: 0.55rem 0.75rem;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.35);
   border-radius: var(--radius-sm);
   color: #fb7185;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -495,8 +492,8 @@ const getRoleBadgeClass = (role) => {
   border-color: #f43f5e;
 }
 
-.logout-icon {
-  font-size: 1rem;
+.action-icon {
+  font-size: 0.95rem;
 }
 
 .role-hint-banner {
