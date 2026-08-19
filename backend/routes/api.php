@@ -14,8 +14,8 @@ Route::get('/health', function () {
         'status' => 'healthy',
         'system' => 'RefuGuia Backend API',
         'timestamp' => now()->toIso8601String(),
-        'auth_support' => 'Enabled (Sanctum/Session RBAC)',
-        'ai_architecture' => 'Local SLM + MCP Tools + Dual Memory (MySQL + ChromaDB)'
+        'slm_model' => 'qwen2.5:1.5b (Local Ollama)',
+        'auth_support' => 'Enabled (Sanctum/Session RBAC)'
     ]);
 });
 
@@ -47,6 +47,7 @@ Route::get('/mcp/tools', [McpController::class, 'getTools']);
 Route::post('/mcp/invoke', [McpController::class, 'invokeTool']);
 Route::get('/mcp/logs', [McpController::class, 'getLogs']);
 
-// Diagnósticos de IA Local & Seguridad
+// Diagnósticos de IA Local (Qwen 2.5:1.5b) & Seguridad
 Route::get('/slm/health', [SlmDiagnosticsController::class, 'health']);
+Route::post('/slm/inference', [SlmDiagnosticsController::class, 'testInference']);
 Route::post('/slm/test-injection', [SlmDiagnosticsController::class, 'testPromptInjection']);
