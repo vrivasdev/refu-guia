@@ -16,29 +16,60 @@
           </div>
         </router-link>
 
-        <!-- NAV LINKS -->
+        <!-- DYNAMIC NAV MENU ACCORDING TO ROLE -->
         <nav class="nav-menu">
+          <!-- SIEMPRE VISIBLE: CHAT CIUDADANO -->
           <router-link to="/" class="nav-pill" active-class="nav-pill-active">
             <span class="pill-icon">💬</span>
             <span class="pill-label">Chat Ciudadano</span>
           </router-link>
-          <router-link to="/refugios" class="nav-pill" active-class="nav-pill-active">
+
+          <!-- REFUGIOS & QR: shelter_admin y rescuer -->
+          <router-link 
+            v-if="hasRole(['shelter_admin', 'rescuer'])" 
+            to="/refugios" 
+            class="nav-pill" 
+            active-class="nav-pill-active"
+          >
             <span class="pill-icon">🏥</span>
             <span class="pill-label">Refugios & QR</span>
           </router-link>
-          <router-link to="/matches" class="nav-pill" active-class="nav-pill-active">
+
+          <!-- MATCHMAKER HUB: shelter_admin, rescuer, citizen -->
+          <router-link 
+            v-if="hasRole(['shelter_admin', 'rescuer', 'citizen'])" 
+            to="/matches" 
+            class="nav-pill" 
+            active-class="nav-pill-active"
+          >
             <span class="pill-icon">⚡</span>
             <span class="pill-label">Matchmaker Hub</span>
           </router-link>
+
+          <!-- ADOPCION: publico, adopter, shelter_admin -->
           <router-link to="/adopcion" class="nav-pill" active-class="nav-pill-active">
             <span class="pill-icon">❤️</span>
             <span class="pill-label">Adopción (15d)</span>
           </router-link>
-          <router-link to="/mcp" class="nav-pill" active-class="nav-pill-active">
+
+          <!-- MCP & SKILLS: EXCLUSIVO COORDINADORA / SHELTER_ADMIN -->
+          <router-link 
+            v-if="hasRole('shelter_admin')" 
+            to="/mcp" 
+            class="nav-pill" 
+            active-class="nav-pill-active"
+          >
             <span class="pill-icon">🛠️</span>
             <span class="pill-label">MCP & Skills</span>
           </router-link>
-          <router-link to="/terminal-slm" class="nav-pill" active-class="nav-pill-active">
+
+          <!-- SLM LOCAL TERMINAL: EXCLUSIVO COORDINADORA / SHELTER_ADMIN -->
+          <router-link 
+            v-if="hasRole('shelter_admin')" 
+            to="/terminal-slm" 
+            class="nav-pill" 
+            active-class="nav-pill-active"
+          >
             <span class="pill-icon">💻</span>
             <span class="pill-label">SLM Local</span>
           </router-link>
@@ -55,7 +86,7 @@
               <span class="user-name">{{ currentUser.name }}</span>
               <span :class="['badge', getRoleBadgeClass(currentUser.role)]">{{ currentUser.role_label || currentUser.role }}</span>
             </div>
-            <button class="btn-logout" @click.stop="logout" title="Cerrar Sesión">✕</button>
+            <button class="btn-logout" @click.stop="handleLogout" title="Cerrar Sesión">✕</button>
           </div>
 
           <!-- LOGIN BUTTON IF GUEST -->
@@ -65,6 +96,12 @@
         </div>
       </div>
     </header>
+
+    <!-- ROLE RESTRICTION NOTICE BANNER IF GUEST -->
+    <div v-if="!currentUser" class="role-hint-banner">
+      <span>💡 <strong>Modo Visitante:</strong> Inicia sesión con el rol de <strong>Coordinadora de Refugio</strong> para habilitar las secciones técnicas avanzadas (<em>MCP & Skills</em> y <em>SLM Local</em>).</span>
+      <button class="btn-banner-login" @click="showLoginModal = true">Cambiar de Rol</button>
+    </div>
 
     <!-- MAIN VIEW -->
     <main class="page-container">
@@ -80,7 +117,7 @@
         <div class="footer-badges">
           <span class="badge badge-primary">100% IA Local (SLM)</span>
           <span class="badge badge-cyan">Protocolo MCP</span>
-          <span class="badge badge-emerald">Control de Sesiones RBAC</span>
+          <span class="badge badge-emerald">Control de Acceso RBAC</span>
         </div>
       </div>
     </footer>
@@ -92,10 +129,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuth } from './services/auth'
 import LoginModal from './components/LoginModal.vue'
 
-const { currentUser, logout } = useAuth()
+const router = useRouter()
+const { currentUser, logout, hasRole } = useAuth()
 const showLoginModal = ref(false)
 
 const getUserInitials = (name) => {
@@ -111,6 +150,11 @@ const getRoleBadgeClass = (role) => {
     case 'adopter': return 'badge-emerald'
     default: return 'badge-primary'
   }
+}
+
+const handleLogout = () => {
+  logout()
+  router.push('/')
 }
 </script>
 
@@ -291,6 +335,26 @@ const getRoleBadgeClass = (role) => {
 .btn-logout:hover {
   background: rgba(244, 63, 94, 0.3);
   color: #fb7185;
+}
+
+.role-hint-banner {
+  background: rgba(99, 102, 241, 0.12);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 0.5rem 1.5rem;
+  font-size: 0.78rem;
+  color: #c7d2fe;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-banner-login {
+  background: #6366f1;
+  color: white;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .page-container {
