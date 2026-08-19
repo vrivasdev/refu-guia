@@ -34,11 +34,11 @@
 
             <div class="bubble-text" v-html="msg.text"></div>
 
-            <!-- NLP EXTRACTION SUMMARY -->
+            <!-- SUMMARY CARD (CLEAN & EMPATHIC - NO TECHNICAL JARGON) -->
             <div v-if="msg.extractedCard" class="nlp-card">
               <div class="nlp-card-header">
-                <div class="nlp-title">📋 Rasgos Extraídos por IA (Modelo Qwen 2.5)</div>
-                <span class="badge badge-emerald">Vectorizado en ChromaDB</span>
+                <div class="nlp-title">📋 Características Identificadas</div>
+                <span class="badge badge-emerald">Búsqueda Activa</span>
               </div>
               <div class="nlp-grid">
                 <div class="nlp-field">
@@ -64,10 +64,14 @@
               </div>
             </div>
 
-            <!-- VECTOR MATCH RESULTS FOR DAMNIFICADOS -->
+            <!-- MATCH RESULTS -->
             <div v-if="msg.matchesFound && msg.matchesFound.length > 0" class="matches-box">
-              <div class="match-box-title">⚡ ¡Coincidencias Encontradas en Refugios!</div>
-              <p class="match-box-sub">El motor de IA y búsqueda vectorial encontró animales rescatados con características similares a tu reporte:</p>
+              <div class="match-box-title">
+                {{ isAdopterRole ? '❤️ ¡Mascotas Disponibles que Coinciden con tu Búsqueda!' : '⚡ ¡Coincidencias Encontradas en Refugios!' }}
+              </div>
+              <p class="match-box-sub">
+                {{ isAdopterRole ? 'Hemos encontrado perritos/gatitos en refugios que coinciden con tus preferencias de adopción:' : 'Encontramos animales rescatados con características muy similares a tu reporte:' }}
+              </p>
               
               <div class="matches-cards-grid">
                 <div v-for="m in msg.matchesFound" :key="m.candidate_uuid" class="match-result-card">
@@ -79,18 +83,25 @@
                     </div>
                     <div class="match-uuid">ID Refugio: {{ m.candidate_uuid }}</div>
                     <div class="match-distance">📍 Ubicación: {{ m.candidate_location || 'Refugio Central' }} (a {{ m.geo_distance_km || 1.2 }} km)</div>
-                    <button class="btn-verify-match" @click="openMatchModal(m, msg)">
-                      🔍 Verificar Comparación de Mascota en Refugio →
-                    </button>
+                    
+                    <!-- ACTION BUTTONS: ADOPTER VS CITIZEN -->
+                    <div class="match-action-btns">
+                      <button class="btn-verify-match" @click="openMatchModal(m, msg)">
+                        🔍 Ver Ficha y Comparación →
+                      </button>
+                      <button v-if="isAdopterRole" class="btn-adopt-direct" @click="goToAdoption(m.candidate_pet_id)">
+                        ❤️ Postular para Adoptar →
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- NO MATCHES FOUND NOTICE -->
-            <div v-else-if="msg.isLostReport && (!msg.matchesFound || msg.matchesFound.length === 0)" class="no-matches-box">
-              <div class="no-match-title">🔍 Búsqueda Activa Iniciada</div>
-              <p class="no-match-text">Actualmente no hay mascotas rescatadas con estas características exactas en los refugios. Tu reporte ha quedado guardado y vectorizado; el sistema te alertará automáticamente en cuanto un rescatista registre un animal compatible.</p>
+            <div v-else-if="msg.isSearchReport && (!msg.matchesFound || msg.matchesFound.length === 0)" class="no-matches-box">
+              <div class="no-match-title">🔍 Búsqueda Activa en Proceso</div>
+              <p class="no-match-text">Actualmente no hay mascotas rescatadas con estas características exactas en los refugios. Tu solicitud ha quedado guardada y el sistema te notificará automáticamente cuando ingrese una mascota compatible.</p>
             </div>
 
             <!-- QR CREDENTIAL CARD (ONLY FOR RESCUERS) -->
@@ -110,30 +121,46 @@
           </div>
         </div>
 
+        <!-- CLEAN TYPING INDICATOR (NO TECH JARGON) -->
         <div v-if="isProcessing" class="typing-indicator">
           <div class="typing-dots"><span></span><span></span><span></span></div>
-          <span class="typing-label">Modelo Local Ollama (Qwen 2.5) analizando relato y vectorizando en ChromaDB...</span>
+          <span class="typing-label">{{ typingStatusLabel }}</span>
         </div>
       </div>
 
       <!-- ROLE-BASED QUICK ACTION CARDS -->
       <div v-if="messages.length <= 2" class="quick-cards-grid single-col">
+        <!-- CITIZEN (DAMNIFICADA): "REPORTAR MASCOTA EXTRAVIADA" -->
         <button 
           v-if="isCitizenRole" 
           class="quick-action-card lost" 
-          @click="selectQuickOption('lost')"
+          @click="selectQuickOption('citizen_lost')"
         >
           <div class="quick-icon">🔍</div>
           <div class="quick-text">
             <strong>Reportar Mascota Extraviada</strong>
-            <span>Describir a tu perro/gato para buscar coincidencias vectoriales en los refugios</span>
+            <span>Describir a tu perro/gato para buscar coincidencias en los refugios</span>
           </div>
         </button>
 
+        <!-- ADOPTER (ANDRÉS): "BUSCAR MASCOTA PARA ADOPTAR" -->
+        <button 
+          v-else-if="isAdopterRole" 
+          class="quick-action-card adopt" 
+          @click="selectQuickOption('adopter_search')"
+        >
+          <div class="quick-icon">❤️</div>
+          <div class="quick-text">
+            <strong>Buscar Mascota para Adoptar</strong>
+            <span>Describir qué tipo de perro o gato buscas para encontrar candidatos en refugios</span>
+          </div>
+        </button>
+
+        <!-- RESCUER / SHELTER ADMIN: "REGISTRAR RESCATE EN CAMPO" -->
         <button 
           v-else 
           class="quick-action-card found" 
-          @click="selectQuickOption('found')"
+          @click="selectQuickOption('rescuer_found')"
         >
           <div class="quick-icon">🏡</div>
           <div class="quick-text">
@@ -183,12 +210,12 @@
       </div>
     </div>
 
-    <!-- MODAL DE VERIFICACIÓN Y COMPARACIÓN VISUAL EN VIVO -->
+    <!-- MODAL DE VERIFICACIÓN Y DETALLES -->
     <div v-if="showModal && activeMatch" class="modal-overlay" @click.self="showModal = false">
       <div class="modal-card glass-card">
         <div class="modal-header">
           <div class="modal-title-box">
-            <h3>⚡ Verificación de Coincidencia de IA</h3>
+            <h3>{{ isAdopterRole ? '❤️ Mascota Compatible para Adopción' : '⚡ Verificación de Coincidencia' }}</h3>
             <span class="badge badge-emerald">{{ activeMatch.similarity_score }}% de Coincidencia</span>
           </div>
           <button class="btn-close" @click="showModal = false">✕</button>
@@ -196,12 +223,12 @@
 
         <div class="modal-body">
           <div class="modal-comp-grid">
-            <!-- TU REPORTE -->
+            <!-- TU BÚSQUEDA -->
             <div class="modal-pet-box">
-              <div class="box-tag">🔍 Tu Reporte (Mascota Perdida)</div>
+              <div class="box-tag">{{ isAdopterRole ? '🔍 Tus Preferencias de Búsqueda' : '🔍 Tu Reporte (Mascota Perdida)' }}</div>
               <img :src="activeMatch.lost_pet_photo || defaultFallbackPhoto" class="modal-pet-img" />
-              <h4>{{ activeMatch.lost_pet_name || 'Tu Mascota' }}</h4>
-              <p class="modal-loc">📍 {{ activeMatch.lost_pet_location || 'Lugar de Extravío' }}</p>
+              <h4>{{ activeMatch.lost_pet_name || 'Búsqueda Ingresada' }}</h4>
+              <p class="modal-loc">📍 {{ activeMatch.lost_pet_location || 'Zona de Interés' }}</p>
             </div>
 
             <!-- VS BREAKDOWN -->
@@ -209,8 +236,8 @@
               <div class="vs-circle">VS</div>
               <div class="vs-metrics">
                 <div><span>Fenotipo:</span> <strong>{{ activeMatch.visual_score || 95 }}%</strong></div>
-                <div><span>Semántica:</span> <strong>{{ activeMatch.nlp_semantic_score || 90 }}%</strong></div>
-                <div><span>Distancia:</span> <strong>{{ activeMatch.geo_distance_km || 1.2 }} km</strong></div>
+                <div><span>Rasgos:</span> <strong>{{ activeMatch.nlp_semantic_score || 90 }}%</strong></div>
+                <div><span>Cercanía:</span> <strong>{{ activeMatch.geo_distance_km || 1.2 }} km</strong></div>
               </div>
             </div>
 
@@ -224,8 +251,15 @@
           </div>
 
           <div class="modal-actions">
-            <p class="modal-note">Si reconoces a tu mascota, puedes iniciar el proceso de verificación con el equipo del refugio.</p>
-            <router-link :to="`/matches?lost_id=${activeMatch.lost_pet_id}&found_id=${activeMatch.candidate_pet_id}`" class="btn-gradient btn-action">
+            <p class="modal-note">
+              {{ isAdopterRole ? '¿Te gustaría postular para darle un hogar responsable a esta mascota?' : 'Si reconoces a tu mascota, puedes iniciar el proceso de verificación.' }}
+            </p>
+            
+            <!-- BUTTON: ADOPTER REDIRECTS TO /ADOPCION, CITIZEN TO /MATCHES -->
+            <button v-if="isAdopterRole" class="btn-gradient btn-action" @click="goToAdoption(activeMatch.candidate_pet_id)">
+              ❤️ Postular para Adoptar a {{ activeMatch.candidate_name }} →
+            </button>
+            <router-link v-else :to="`/matches?lost_id=${activeMatch.lost_pet_id}&found_id=${activeMatch.candidate_pet_id}`" class="btn-gradient btn-action">
               Ir al Matchmaker Central →
             </router-link>
           </div>
@@ -237,7 +271,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const defaultFallbackPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
 
 const threadRef = ref(null)
@@ -250,40 +286,47 @@ const currentUser = ref(null)
 const showModal = ref(false)
 const activeMatch = ref(null)
 
-const isCitizenRole = computed(() => {
-  if (!currentUser.value) return true
-  return currentUser.value.role === 'citizen' || currentUser.value.role === 'adopter'
-})
+const isAdopterRole = computed(() => currentUser.value?.role === 'adopter')
+const isCitizenRole = computed(() => currentUser.value?.role === 'citizen')
+const isRescuerOrAdmin = computed(() => currentUser.value?.role === 'rescuer' || currentUser.value?.role === 'shelter_admin')
 
 const currentReportType = computed(() => {
-  return isCitizenRole.value ? 'lost' : 'found'
+  return isRescuerOrAdmin.value ? 'found' : 'lost'
 })
 
 const chatTitle = computed(() => {
-  return isCitizenRole.value ? 'Búsqueda Familiar y Asistente Ciudadano' : 'Ingreso de Rescates y Triage de Campo'
+  if (isAdopterRole.value) return 'Asistente de Adopción y Búsqueda de Mascotas'
+  if (isCitizenRole.value) return 'Búsqueda Familiar y Asistente Ciudadano'
+  return 'Ingreso de Rescates y Triage de Campo'
 })
 
 const chatSubtitle = computed(() => {
-  return isCitizenRole.value 
-    ? 'En línea • Búsqueda Vectorial Semántica con IA Local' 
-    : 'En línea • Generación de Collares QR de Campaña'
+  if (isAdopterRole.value) return 'En línea • Encuentra y postula para adoptar'
+  if (isCitizenRole.value) return 'En línea • Búsqueda de mascotas extraviadas'
+  return 'En línea • Generación de collares QR de campaña'
 })
 
 const userRoleBadge = computed(() => {
-  if (!currentUser.value) return 'Ciudadano Damnificado'
+  if (!currentUser.value) return 'Ciudadano'
   switch(currentUser.value.role) {
+    case 'adopter': return 'Adoptante Post-Sismo'
     case 'citizen': return 'Damnificada (Búsqueda Familiar)'
     case 'rescuer': return 'Rescatista de Campo'
     case 'shelter_admin': return 'Coordinadora de Refugio'
-    case 'adopter': return 'Adoptante'
     default: return currentUser.value.role
   }
 })
 
 const inputPlaceholder = computed(() => {
-  return isCitizenRole.value
-    ? 'Describe a tu mascota perdida (ej: Perdí a mi perrito Toby en Catia, es mestizo negro con mancha blanca en el pecho)...'
-    : 'Describe a la mascota rescatada en campo (ej: Rescatamos a un perro mestizo mediano negro con pata lastimada en Caricuao)...'
+  if (isAdopterRole.value) return 'Describe qué tipo de mascota te gustaría adoptar (ej: Busco un perro mediano mestizo negro con blanco, juguetón)...'
+  if (isCitizenRole.value) return 'Describe a tu mascota perdida (ej: Perdí a mi perrito Toby en Catia, es mestizo negro con mancha blanca)...'
+  return 'Describe a la mascota rescatada en campo (ej: Rescatamos a un perro mestizo mediano negro con pata lastimada en Caricuao)...'
+})
+
+const typingStatusLabel = computed(() => {
+  if (isAdopterRole.value) return 'RefuGuía buscando mascotas compatibles en refugios...'
+  if (isCitizenRole.value) return 'RefuGuía buscando coincidencias en refugios...'
+  return 'RefuGuía procesando registro de rescate...'
 })
 
 // REAL SPEECH RECOGNITION (WEB SPEECH API)
@@ -332,9 +375,11 @@ const toggleAudioRecording = () => {
   if (!recognition) initSpeechRecognition()
 
   if (!recognition) {
-    userInput.value = isCitizenRole.value
-      ? 'Perdí a mi perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao durante el sismo.'
-      : 'Rescatamos a un perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao.'
+    userInput.value = isAdopterRole.value
+      ? 'Me gustaría adoptar un perrito mestizo mediano color negro con manchas blancas en el pecho.'
+      : (isCitizenRole.value
+        ? 'Perdí a mi perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao durante el sismo.'
+        : 'Rescatamos a un perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao.')
     voiceTranscriptNotice.value = '🎙️ Nota de voz cargada'
     setTimeout(() => { voiceTranscriptNotice.value = '' }, 3000)
     return
@@ -376,7 +421,9 @@ const scrollToBottom = () => {
 }
 
 const selectQuickOption = (type) => {
-  if (type === 'lost') {
+  if (type === 'adopter_search') {
+    userInput.value = 'Busco adoptar a un perrito mestizo mediano negro con manchas blancas en el pecho.'
+  } else if (type === 'citizen_lost') {
     userInput.value = 'Perdí a mi perrito Toby en la zona de Caricuao durante el sismo. Es un mestizo mediano negro con manchas blancas en el pecho.'
   } else {
     userInput.value = 'Rescatamos a un perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao. Tiene una patita lastimada y tiembla de frío.'
@@ -417,6 +464,11 @@ const openMatchModal = (matchItem, parentMsg) => {
     lost_pet_photo: parentMsg?.attachedPhoto || matchItem.lost_pet_photo || defaultFallbackPhoto
   }
   showModal.value = true
+}
+
+const goToAdoption = (petId) => {
+  showModal.value = false
+  router.push(`/adopcion?pet_id=${petId}`)
 }
 
 const sendMessage = async () => {
@@ -460,13 +512,17 @@ const sendMessage = async () => {
     if (data.success) {
       const ext = data.nlp_extraction || {}
       const petUuid = data.pet?.uuid || 'RG-2026-EMERG'
-      const isLost = (reportType === 'lost')
+      const isSearch = (reportType === 'lost')
       
       let botResponseText = ''
-      if (isLost) {
+      if (isAdopterRole.value) {
         botResponseText = (data.matches_found && data.matches_found.length > 0)
-          ? `He vectorizado tu reporte de búsqueda y <strong>encontré ${data.matches_found.length} mascota(s) rescatada(s) con alta coincidencia</strong> en los refugios:`
-          : `He registrado tu reporte de búsqueda familiar en el sistema y vectorizado las características de tu mascota en ChromaDB.`
+          ? `¡He encontrado <strong>${data.matches_found.length} mascota(s) en refugios</strong> compatibles con las características que buscas adoptar! Puedes verlas y postular de inmediato:`
+          : `He registrado tus preferencias de adopción. Actualmente no hay mascotas con estas características en los refugios, pero te notificaremos tan pronto ingrese un candidato.`
+      } else if (isCitizenRole.value) {
+        botResponseText = (data.matches_found && data.matches_found.length > 0)
+          ? `He registrado tu reporte de búsqueda y <strong>encontré ${data.matches_found.length} mascota(s) rescatada(s) con alta coincidencia</strong> en los refugios:`
+          : `He registrado tu reporte de búsqueda familiar en el sistema y guardado las características de tu mascota.`
       } else {
         botResponseText = `¡Mascota rescatada registrada exitosamente en el refugio! Se ha generado su collar QR oficial de campaña.`
       }
@@ -475,7 +531,7 @@ const sendMessage = async () => {
         sender: 'bot',
         text: botResponseText,
         extractedCard: ext,
-        isLostReport: isLost,
+        isSearchReport: isSearch,
         qrBadge: data.qr_badge ? { uuid: petUuid, print_ready_badge: data.qr_badge.print_ready_badge } : null,
         matchesFound: data.matches_found || [],
         attachedPhoto: attachedPhoto || null,
@@ -704,7 +760,7 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-/* MATCHES FOR DAMNIFICADOS */
+/* MATCHES BOX */
 .matches-box {
   margin-top: 1rem;
   background: rgba(16, 185, 129, 0.08);
@@ -779,9 +835,14 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
+.match-action-btns {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  align-items: center;
+}
+
 .btn-verify-match {
-  display: inline-block;
-  margin-top: 0.35rem;
   font-size: 0.78rem;
   font-weight: 700;
   color: #818cf8;
@@ -795,6 +856,24 @@ onUnmounted(() => {
 .btn-verify-match:hover {
   color: #a5b4fc;
   text-decoration: underline;
+}
+
+.btn-adopt-direct {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-adopt-direct:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
 /* NO MATCHES ACTIVE SEARCH BOX */
@@ -1191,5 +1270,6 @@ onUnmounted(() => {
   font-size: 0.82rem;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
 }
 </style>

@@ -14,6 +14,11 @@
       </div>
     </div>
 
+    <!-- PRE-SELECTED PET FROM CHAT BANNER -->
+    <div v-if="highlightedPetNotice" class="preselected-banner glass-card">
+      <span>🎉 <strong>Mascota seleccionada desde el Chat:</strong> Has seleccionado a <strong>{{ selectedPet?.name }}</strong> para postular a su adopción.</span>
+    </div>
+
     <div class="adoption-layout">
       <!-- ADOPTABLE PETS CATALOG -->
       <div class="pets-catalog">
@@ -21,16 +26,18 @@
           v-for="p in adoptablePets" 
           :key="p.id" 
           :class="['adopt-card glass-card', selectedPet?.id === p.id ? 'selected-adopt' : '']"
-          @click="selectedPet = p"
+          @click="selectPet(p)"
         >
           <img :src="p.photo_url || defaultCatPhoto" class="adopt-img" />
           <div class="adopt-body">
             <div class="adopt-top">
               <h3>{{ p.name }}</h3>
-              <span class="badge badge-emerald">✓ 15 Días Cumplidos</span>
+              <span :class="['badge', isEligible(p) ? 'badge-emerald' : 'badge-amber']">
+                {{ isEligible(p) ? '✓ 15 Días Cumplidos' : '⏳ En Período de Gracia' }}
+              </span>
             </div>
             <p class="adopt-sub">{{ p.species === 'feline' ? '🐱 Gatito' : '🐶 Canino' }} • {{ p.breed }} • {{ p.primary_color }}</p>
-            <p class="adopt-notes"><strong>Estado Clínico:</strong> {{ p.clinical_records?.[0]?.nutritional_status || 'Recuperado y vacunado' }}</p>
+            <p class="adopt-notes"><strong>Estado:</strong> {{ p.location_address || 'Refugio Central' }}</p>
             <button class="btn-postular">Postular para Adopción →</button>
           </div>
         </div>
@@ -113,13 +120,16 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { showSuccess, showError, showWarning } from '../utils/alerts'
 
+const route = useRoute()
 const defaultCatPhoto = 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&auto=format&fit=crop&q=80'
 const adoptablePets = ref([])
 const selectedPet = ref(null)
 const evaluating = ref(false)
 const aiResult = ref(null)
+const highlightedPetNotice = ref(false)
 
 const form = ref({
   name: 'Andrés Morales',
@@ -130,29 +140,55 @@ const form = ref({
   hasOtherPets: false
 })
 
+const isEligible = (pet) => {
+  if (pet.status === 'adoptable') return true
+  if (pet.grace_period_ends_at) {
+    return new Date(pet.grace_period_ends_at) <= new Date()
+  }
+  return false
+}
+
+const selectPet = (p) => {
+  selectedPet.value = p
+  aiResult.value = null
+}
+
 const fetchAdoptable = async () => {
+  const queryPetId = route.query.pet_id ? parseInt(route.query.pet_id) : null
+
   try {
-    const res = await fetch('http://localhost:8000/api/adoptions/adoptable-pets')
+    const res = await fetch('http://localhost:8000/api/pets')
     const data = await res.json()
     if (data.success && data.data.length > 0) {
-      adoptablePets.value = data.data
-      selectedPet.value = data.data[0]
-    } else {
-      adoptablePets.value = [
-        {
-          id: 3,
-          name: 'Toby (Rescatado Caricuao)',
-          species: 'feline',
-          breed: 'Mestizo de Campaña',
-          primary_color: 'Negro y Blanco',
-          photo_url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400',
-          clinical_records: [{ nutritional_status: 'Óptimo y esterilizado' }]
+      // Filtrar mascotas en refugio o adoptables
+      const shelterPets = data.data.filter(p => p.status === 'in_shelter' || p.status === 'adoptable')
+      adoptablePets.value = shelterPets.length > 0 ? shelterPets : data.data
+
+      if (queryPetId) {
+        const found = adoptablePets.value.find(p => p.id === queryPetId)
+        if (found) {
+          selectedPet.value = found
+          highlightedPetNotice.value = true
+        } else {
+          selectedPet.value = adoptablePets.value[0]
         }
-      ]
-      selectedPet.value = adoptablePets.value[0]
+      } else {
+        selectedPet.value = adoptablePets.value[0]
+      }
     }
   } catch (e) {
-    console.log('Error fetching adoptable pets:', e)
+    adoptablePets.value = [
+      {
+        id: 3,
+        name: 'Toby (Rescatado Caricuao)',
+        species: 'canine',
+        breed: 'Mestizo de Campaña',
+        primary_color: 'Negro y Blanco',
+        status: 'adoptable',
+        photo_url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400'
+      }
+    ]
+    selectedPet.value = adoptablePets.value[0]
   }
 }
 
@@ -262,6 +298,14 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   color: var(--text-main);
   cursor: pointer;
+}
+
+.preselected-banner {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 0.85rem 1.25rem;
+  color: #6ee7b7;
+  font-size: 0.85rem;
 }
 
 .adoption-layout {
