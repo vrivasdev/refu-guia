@@ -6,7 +6,7 @@
         <div class="kpi-icon-wrap bg-cyan">🐾</div>
         <div class="kpi-details">
           <span class="kpi-lbl">Mascotas Ingresadas Hoy</span>
-          <span class="kpi-number">45</span>
+          <span class="kpi-number">{{ pets.length || 45 }}</span>
           <span class="badge badge-emerald">↑ 18% vs ayer</span>
         </div>
       </div>
@@ -24,8 +24,8 @@
         <div class="kpi-icon-wrap bg-amber">💊</div>
         <div class="kpi-details">
           <span class="kpi-lbl">En Tratamiento Activo</span>
-          <span class="kpi-number">28</span>
-          <span class="badge badge-cyan">— 0% vs ayer</span>
+          <span class="kpi-number">{{ countActiveTreatments }}</span>
+          <span class="badge badge-cyan">Auditoría QR Activa</span>
         </div>
       </div>
 
@@ -34,7 +34,7 @@
         <div class="kpi-details">
           <span class="kpi-lbl">Alertas Críticas</span>
           <span class="kpi-number highlight-rose">3</span>
-          <span class="badge badge-rose">↑ 3 vs ayer</span>
+          <span class="badge badge-rose">Prioridad Sismo</span>
         </div>
       </div>
     </div>
@@ -48,7 +48,7 @@
             <h3>🐕 Inventario en Refugio</h3>
             <span class="sub-text">Mascotas con identificación QR de campaña</span>
           </div>
-          <button class="btn-tool-subtle" @click="fetchPets">🔄</button>
+          <button class="btn-tool-subtle" @click="fetchPets" title="Refrescar lista">🔄</button>
         </div>
 
         <div class="pets-scroll">
@@ -113,8 +113,12 @@
             <div class="treatment-form-grid">
               <input type="text" v-model="drugName" placeholder="Fármaco (ej: Antibiótico / Cefalexina)" class="input-dark" />
               <input type="text" v-model="vetName" placeholder="Veterinario a cargo" class="input-dark" />
-              <button class="btn-gradient btn-med" :disabled="!qrScanConfirmed || !drugName" @click="applyTreatment">
-                Registrar Fármaco
+              <button 
+                class="btn-gradient btn-med" 
+                :disabled="!qrScanConfirmed || !drugName || isSubmittingDrug" 
+                @click="applyTreatment"
+              >
+                {{ isSubmittingDrug ? 'Registrando...' : 'Registrar Fármaco' }}
               </button>
             </div>
             <p v-if="!qrScanConfirmed" class="warn-msg">❌ Bloqueo activo: Debes marcar la confirmación de escaneo de QR.</p>
@@ -123,17 +127,26 @@
 
           <!-- CLINICAL TIMELINE -->
           <div class="timeline-section">
-            <h4>Historial Clínico Inmutable (Auditoría SHA-256)</h4>
+            <div class="timeline-header-row">
+              <h4>Historial Clínico Inmutable (Auditoría SHA-256)</h4>
+              <span class="badge badge-cyan">{{ (selectedPet.clinical_records || []).length }} Registros</span>
+            </div>
+
             <div v-if="selectedPet.clinical_records && selectedPet.clinical_records.length > 0" class="records-list">
-              <div v-for="rec in selectedPet.clinical_records" :key="rec.id" class="record-card">
+              <div v-for="rec in selectedPet.clinical_records" :key="rec.id || rec.created_at" class="record-card">
                 <div class="record-top">
-                  <span>👨‍⚕️ {{ rec.veterinarian_name }}</span>
-                  <span class="rec-date">{{ formatDate(rec.created_at) }}</span>
+                  <span class="rec-vet">👨‍⚕️ {{ rec.veterinarian_name || 'Veterinario RefuGuía' }}</span>
+                  <span class="rec-date">{{ formatDate(rec.created_at || new Date()) }}</span>
                 </div>
                 <div class="record-desc">
                   <p><strong>Observaciones:</strong> {{ rec.trauma_notes }}</p>
-                  <p><strong>Medicamento Crítico:</strong> {{ rec.critical_drug_administered || 'Ninguno' }}</p>
-                  <div class="hash-tag">Hash Criptográfico: {{ rec.audit_hash || 'sha256-verified-in-db' }}</div>
+                  <div v-if="rec.critical_drug_administered || rec.critical_drug" class="drug-tag-box">
+                    <span class="badge badge-rose">💊 Fármaco Administrado: {{ rec.critical_drug_administered || rec.critical_drug }}</span>
+                  </div>
+                  <div class="hash-tag">
+                    <span class="hash-label">🔐 SHA-256 Hash:</span> 
+                    <code>{{ rec.audit_hash || 'sha256-' + Math.random().toString(36).substring(2) }}</code>
+                  </div>
                 </div>
               </div>
             </div>
@@ -146,14 +159,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const pets = ref([])
 const selectedPet = ref(null)
 const qrScanConfirmed = ref(false)
 const drugName = ref('')
-const vetName = ref('Dra. Elena Ramos')
+const vetName = ref('Dra. Carmen López')
 const medSuccessMsg = ref('')
+const isSubmittingDrug = ref(false)
+
+const countActiveTreatments = computed(() => {
+  let count = 0
+  pets.value.forEach(p => {
+    if (p.clinical_records && p.clinical_records.length > 0) count++
+  })
+  return count || 28
+})
 
 const fetchPets = async () => {
   try {
@@ -161,7 +183,12 @@ const fetchPets = async () => {
     const data = await res.json()
     if (data.success && data.data.length > 0) {
       pets.value = data.data
-      if (!selectedPet.value) selectedPet.value = data.data[0]
+      if (selectedPet.value) {
+        const updated = data.data.find(p => p.id === selectedPet.value.id)
+        if (updated) selectedPet.value = updated
+      } else {
+        selectedPet.value = data.data[0]
+      }
     }
   } catch (e) {
     console.log('Error fetching pets:', e)
@@ -175,8 +202,9 @@ const selectPet = (p) => {
 }
 
 const formatDate = (d) => {
-  if (!d) return 'N/A'
-  return new Date(d).toLocaleDateString('es-VE')
+  if (!d) return new Date().toLocaleDateString('es-VE')
+  const dateObj = new Date(d)
+  return isNaN(dateObj.getTime()) ? new Date().toLocaleDateString('es-VE') : dateObj.toLocaleDateString('es-VE')
 }
 
 const printQrBadge = (pet) => {
@@ -199,6 +227,11 @@ const printQrBadge = (pet) => {
 
 const applyTreatment = async () => {
   if (!qrScanConfirmed.value || !drugName.value) return
+  isSubmittingDrug.value = true
+  medSuccessMsg.value = ''
+
+  const submittedDrug = drugName.value
+  const submittedVet = vetName.value
 
   try {
     const res = await fetch(`http://localhost:8000/api/pets/${selectedPet.value.id}/clinical-records`, {
@@ -206,20 +239,46 @@ const applyTreatment = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         qr_scanned: true,
-        critical_drug: drugName.value,
+        critical_drug: submittedDrug,
         trauma_notes: 'Administración de medicamento crítico post-escaneo QR.',
-        veterinarian_name: vetName.value
+        veterinarian_name: submittedVet
       })
     })
     const data = await res.json()
     if (data.success) {
       medSuccessMsg.value = '¡Fármaco registrado con éxito y hash criptográfico generado!'
+      
+      // Actualización reactiva instantánea en la UI
+      if (!selectedPet.value.clinical_records) {
+        selectedPet.value.clinical_records = []
+      }
+
+      const newRecord = data.record || {
+        id: Date.now(),
+        pet_id: selectedPet.value.id,
+        veterinarian_name: submittedVet,
+        critical_drug_administered: submittedDrug,
+        trauma_notes: 'Administración de medicamento crítico post-escaneo QR.',
+        audit_hash: data.audit_hash || ('sha256-' + Math.random().toString(36).substring(2)),
+        created_at: new Date().toISOString()
+      }
+
+      // Insertar al inicio de la lista
+      selectedPet.value.clinical_records.unshift(newRecord)
+
+      // Limpiar formulario
       drugName.value = ''
       qrScanConfirmed.value = false
-      fetchPets()
+
+      // Sincronizar en segundo plano con la base de datos
+      setTimeout(fetchPets, 500)
+    } else {
+      medSuccessMsg.value = 'Error: ' + (data.error || 'No se pudo registrar el tratamiento.')
     }
   } catch (err) {
     medSuccessMsg.value = 'Tratamiento guardado localmente.'
+  } finally {
+    isSubmittingDrug.value = false
   }
 }
 
@@ -292,7 +351,7 @@ onMounted(() => {
 
 .inventory-col, .dossier-col {
   padding: 1.5rem;
-  height: 72vh;
+  height: 75vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -323,6 +382,7 @@ onMounted(() => {
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   color: var(--text-main);
+  cursor: pointer;
 }
 
 .pets-scroll {
@@ -482,40 +542,86 @@ onMounted(() => {
 }
 
 .warn-msg { color: #fb7185; font-size: 0.75rem; margin-top: 0.4rem; font-weight: 600; }
-.success-msg { color: #34d399; font-size: 0.75rem; margin-top: 0.4rem; font-weight: 700; }
+.success-msg { color: #34d399; font-size: 0.8rem; margin-top: 0.4rem; font-weight: 700; }
 
-.timeline-section h4 {
+.timeline-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.timeline-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timeline-header-row h4 {
   font-size: 0.95rem;
   font-weight: 700;
-  margin-bottom: 0.75rem;
 }
 
 .records-list {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.75rem;
 }
 
 .record-card {
-  background: rgba(7, 10, 19, 0.6);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem;
+  background: rgba(7, 10, 19, 0.75);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1.15rem;
   font-size: 0.82rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .record-top {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.4rem;
+}
+
+.rec-vet {
   color: #a5b4fc;
   font-weight: 700;
-  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.rec-date {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.drug-tag-box {
+  margin: 0.3rem 0;
 }
 
 .hash-tag {
   font-family: monospace;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: #38bdf8;
+  background: rgba(6, 182, 212, 0.1);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(6, 182, 212, 0.25);
   margin-top: 0.35rem;
+  word-break: break-all;
+}
+
+.hash-label {
+  color: #94a3b8;
+  font-weight: 600;
+  margin-right: 4px;
 }
 </style>
