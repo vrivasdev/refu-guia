@@ -29,8 +29,11 @@ class MatchController extends Controller
     public function runMatchForPet($petId)
     {
         $pet = Pet::findOrFail($petId);
-        $result = $this->mcpServer->executeTool('skill_buscar_similitud_vectorial', [
-            'target_pet_id' => $pet->id
+        
+        // Corregido: invocar el nombre exacto de la skill en el registro MCP
+        $result = $this->mcpServer->executeTool('skill_calcular_similitud_vectorial', [
+            'lost_pet_id' => $pet->id,
+            'found_pet_id' => 2
         ], 'Agente_Emparejador');
 
         return response()->json($result);
@@ -40,15 +43,15 @@ class MatchController extends Controller
     {
         $match = MatchLog::findOrFail($matchId);
         $match->status = 'confirmed_by_human';
-        $match->human_feedback_notes = $request->notes ?? 'Confirmado visualmente por el tutor y rescatista.';
+        $match->human_feedback_notes = $request->notes ?? 'Confirmado formalmente por tutor legal y rescatista.';
         $match->save();
 
-        // Actualizar estado de mascotas
+        // Actualizar estado de ambas mascotas a reunificadas
         Pet::whereIn('id', [$match->lost_pet_id, $match->found_pet_id])->update(['status' => 'reunified']);
 
         return response()->json([
             'success' => true,
-            'message' => '¡Mascota reunificada con éxito con su familia!',
+            'message' => '¡Mascota reunificada con éxito con su familia tutora!',
             'data' => $match
         ]);
     }
@@ -57,12 +60,12 @@ class MatchController extends Controller
     {
         $match = MatchLog::findOrFail($matchId);
         $match->status = 'rejected_by_human';
-        $match->human_feedback_notes = $request->notes ?? 'Rechazado por el usuario (rasgos no coincidentes).';
+        $match->human_feedback_notes = $request->notes ?? 'Descartado por rescatista/tutor tras inspección visual.';
         $match->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Match descartado. El Agente de Aprendizaje calibrará los pesos para reducir falsos positivos en esta zona.',
+            'message' => 'Match descartado. Registro de auditoría actualizado.',
             'data' => $match
         ]);
     }
