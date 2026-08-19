@@ -58,6 +58,49 @@ class PetController extends Controller
         return response()->json(['success' => true, 'data' => $pet]);
     }
 
+    public function update(Request $request, $id)
+    {
+        $pet = Pet::find($id);
+
+        if (!$pet) {
+            return response()->json(['success' => false, 'error' => 'Mascota no encontrada'], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => 'nullable|string|max:100',
+            'species' => 'nullable|in:canine,feline,other',
+            'breed' => 'nullable|string|max:100',
+            'size' => 'nullable|in:small,medium,large',
+            'primary_color' => 'nullable|string|max:50',
+            'secondary_color' => 'nullable|string|max:50',
+            'distinctive_marks' => 'nullable|string',
+            'status' => 'nullable|in:lost,found,in_shelter,adoptable,reunified',
+            'location_address' => 'nullable|string',
+            'photo_url' => 'nullable|string'
+        ]);
+
+        $pet->update($validated);
+
+        // Actualizar vector en ChromaDB
+        $this->chromaService->indexPetDocument(
+            $pet->id,
+            "{$pet->name} {$pet->species} {$pet->breed} {$pet->primary_color} {$pet->distinctive_marks}",
+            [
+                'pet_id' => $pet->id,
+                'uuid' => $pet->uuid,
+                'report_type' => $pet->report_type,
+                'species' => $pet->species,
+                'status' => $pet->status
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ficha de la mascota actualizada exitosamente.',
+            'data' => $pet->fresh(['clinicalRecords', 'user'])
+        ]);
+    }
+
     public function processCitizenReport(Request $request)
     {
         $request->validate([
@@ -91,19 +134,21 @@ class PetController extends Controller
         $pet = Pet::create([
             'uuid' => $uuid,
             'report_type' => $reportType,
-            'name' => (!empty($nlpData['breed']) && $nlpData['breed'] !== 'not specified') ? $nlpData['breed'] : 'Mascota Rescatada',
+            'name' => (!empty($nlpData['breed']) && $nlpData['breed'] !== 'string') 
+                ? "{$nlpData['breed']} ({$uuid})" 
+                : "Mascota Rescatada ({$uuid})",
             'species' => $species,
-            'breed' => (!empty($nlpData['breed']) && $nlpData['breed'] !== 'not specified') ? $nlpData['breed'] : 'Mestizo',
+            'breed' => (!empty($nlpData['breed']) && $nlpData['breed'] !== 'string') ? $nlpData['breed'] : 'Mestizo de Campaña',
             'size' => $size,
-            'primary_color' => (!empty($nlpData['primary_color']) && $nlpData['primary_color'] !== 'not specified') ? $nlpData['primary_color'] : 'Negro',
-            'secondary_color' => (!empty($nlpData['secondary_color']) && $nlpData['secondary_color'] !== 'not specified') ? $nlpData['secondary_color'] : null,
-            'coat_pattern' => (!empty($nlpData['coat_pattern']) && $nlpData['coat_pattern'] !== 'not specified') ? $nlpData['coat_pattern'] : null,
-            'distinctive_marks' => ($nlpData['distinctive_marks'] ?? 'Sin marcas') . ' | Trauma: ' . ($nlpData['trauma_observed'] ?? 'Ninguno'),
+            'primary_color' => (!empty($nlpData['primary_color']) && $nlpData['primary_color'] !== 'string') ? $nlpData['primary_color'] : 'Negro y Blanco',
+            'secondary_color' => (!empty($nlpData['secondary_color']) && $nlpData['secondary_color'] !== 'string') ? $nlpData['secondary_color'] : 'Blanco',
+            'coat_pattern' => (!empty($nlpData['coat_pattern']) && $nlpData['coat_pattern'] !== 'string') ? $nlpData['coat_pattern'] : 'Bicolor',
+            'distinctive_marks' => ($nlpData['distinctive_marks'] ?? 'Mascota rescatada') . ' | Trauma: ' . ($nlpData['trauma_observed'] ?? 'Ninguno'),
             'status' => ($reportType === 'lost') ? 'lost' : 'in_shelter',
             'photo_url' => $request->photo_url ?: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600',
             'latitude' => $request->latitude ?? 10.5000,
             'longitude' => $request->longitude ?? -66.9167,
-            'location_address' => (!empty($nlpData['location_extracted']) && $nlpData['location_extracted'] !== 'not specified') ? $nlpData['location_extracted'] : 'Zona del Sismo',
+            'location_address' => (!empty($nlpData['location_extracted']) && $nlpData['location_extracted'] !== 'string') ? $nlpData['location_extracted'] : 'Caracas / Zona del Sismo',
             'rescue_date' => $now,
             'grace_period_ends_at' => ($reportType === 'found') ? $now->copy()->addDays(15) : null,
             'user_id' => 1
@@ -115,7 +160,7 @@ class PetController extends Controller
         // 6. Indexar en ChromaDB
         $this->chromaService->indexPetDocument(
             $pet->id,
-            "{$pet->species} {$pet->breed} {$pet->primary_color} {$pet->distinctive_marks}",
+            "{$pet->name} {$pet->species} {$pet->breed} {$pet->primary_color} {$pet->distinctive_marks}",
             [
                 'pet_id' => $pet->id,
                 'uuid' => $pet->uuid,

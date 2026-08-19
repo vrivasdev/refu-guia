@@ -62,7 +62,7 @@
             <div class="pet-card-info">
               <div class="pet-card-top">
                 <span class="pet-name">{{ getCleanPetName(p) }}</span>
-                <span :class="['badge', p.status === 'reunified' ? 'badge-emerald' : 'badge-primary']">{{ p.status }}</span>
+                <span :class="['badge', getStatusBadgeClass(p.status)]">{{ getStatusLabel(p.status) }}</span>
               </div>
               <div class="pet-uuid">{{ p.uuid }}</div>
               <div class="pet-meta">{{ p.species === 'canine' ? '🐶 Canino' : '🐱 Felino' }} • {{ p.breed || 'Mestizo' }} • {{ p.primary_color }}</div>
@@ -78,9 +78,14 @@
             <h3>📋 Expediente Clínico Digital (ID: {{ selectedPet.uuid }})</h3>
             <span class="sub-text">Trazabilidad inmutable e impresión de collares</span>
           </div>
-          <button class="btn-gradient btn-print-badge" @click="printQrBadge(selectedPet)">
-            <span>🖨️ Imprimir Collar QR</span>
-          </button>
+          <div class="header-actions-group">
+            <button class="btn-tool-edit" @click="openEditModal(selectedPet)">
+              <span>✏️ Editar Ficha</span>
+            </button>
+            <button class="btn-gradient btn-print-badge" @click="printQrBadge(selectedPet)">
+              <span>🖨️ Imprimir Collar QR</span>
+            </button>
+          </div>
         </div>
 
         <div class="dossier-body">
@@ -88,12 +93,16 @@
           <div class="profile-hero">
             <img :src="selectedPet.photo_url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600'" class="hero-avatar" />
             <div class="hero-info">
-              <h2>{{ getCleanPetName(selectedPet) }}</h2>
+              <div class="hero-title-row">
+                <h2>{{ getCleanPetName(selectedPet) }}</h2>
+                <button class="btn-icon-edit" @click="openEditModal(selectedPet)" title="Editar datos de la mascota">✏️</button>
+              </div>
               <p class="hero-sub">📍 <strong>Ubicación de Rescate:</strong> {{ selectedPet.location_address || 'Caracas / Zona del Sismo' }}</p>
               <p class="hero-sub">📅 <strong>Fecha Ingreso:</strong> {{ formatDate(selectedPet.rescue_date) }}</p>
               <div class="hero-tags">
                 <span class="badge badge-amber">⏳ 15 Días de Gracia: En Búsqueda Activa</span>
                 <span class="badge badge-cyan">Microchip QR Vinculado</span>
+                <span :class="['badge', getStatusBadgeClass(selectedPet.status)]">{{ getStatusLabel(selectedPet.status) }}</span>
               </div>
             </div>
           </div>
@@ -157,6 +166,89 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL: EDITAR FICHA DE LA MASCOTA -->
+    <div v-if="isEditModalOpen" class="modal-overlay" @click.self="isEditModalOpen = false">
+      <div class="modal-card glass-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon">✏️</div>
+            <div>
+              <h3>Editar Ficha de Mascota</h3>
+              <p class="modal-sub">Identificador Oficial: <strong>{{ editForm.uuid }}</strong></p>
+            </div>
+          </div>
+          <button class="btn-close-modal" @click="isEditModalOpen = false">✕</button>
+        </div>
+
+        <form @submit.prevent="savePetEdit" class="edit-pet-form">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Nombre / Identificador Provisorio:</label>
+              <input type="text" v-model="editForm.name" required class="input-dark" placeholder="ej: Bobby / Rescatado Caricuao" />
+            </div>
+
+            <div class="form-group">
+              <label>Especie:</label>
+              <select v-model="editForm.species" class="input-dark">
+                <option value="canine">🐶 Canino</option>
+                <option value="feline">🐱 Felino</option>
+                <option value="other">🐾 Otro</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Raza / Tipo:</label>
+              <input type="text" v-model="editForm.breed" class="input-dark" placeholder="ej: Mestizo, Border Collie" />
+            </div>
+
+            <div class="form-group">
+              <label>Tamaño:</label>
+              <select v-model="editForm.size" class="input-dark">
+                <option value="small">Pequeño (&lt; 10kg)</option>
+                <option value="medium">Mediano (10 - 25kg)</option>
+                <option value="large">Grande (&gt; 25kg)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Color Primario:</label>
+              <input type="text" v-model="editForm.primary_color" class="input-dark" placeholder="ej: Negro y Blanco" />
+            </div>
+
+            <div class="form-group">
+              <label>Estado en Refugio:</label>
+              <select v-model="editForm.status" class="input-dark">
+                <option value="in_shelter">En Refugio (15d de Gracia)</option>
+                <option value="adoptable">Adoptable (Gracia Superada)</option>
+                <option value="reunified">Reunificado con Familia</option>
+                <option value="lost">Perdido (Búsqueda Activa)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Ubicación de Rescate:</label>
+              <input type="text" v-model="editForm.location_address" class="input-dark" placeholder="ej: Caricuao, Catia, La Guaira" />
+            </div>
+
+            <div class="form-group full">
+              <label>Marcas Distintivas / Traumas Observados:</label>
+              <textarea v-model="editForm.distinctive_marks" rows="2" class="input-dark" placeholder="ej: Mancha blanca en pecho, cojera en pata trasera..."></textarea>
+            </div>
+          </div>
+
+          <p v-if="editErrorMsg" class="warn-msg">❌ {{ editErrorMsg }}</p>
+          <p v-if="editSuccessMsg" class="success-msg">✅ {{ editSuccessMsg }}</p>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" @click="isEditModalOpen = false">Cancelar</button>
+            <button type="submit" class="btn-gradient btn-save" :disabled="isSavingEdit">
+              {{ isSavingEdit ? 'Guardando...' : '💾 Guardar Cambios' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -171,6 +263,24 @@ const vetName = ref('Dra. Carmen López')
 const medSuccessMsg = ref('')
 const isSubmittingDrug = ref(false)
 
+// EDIT MODAL STATE
+const isEditModalOpen = ref(false)
+const isSavingEdit = ref(false)
+const editErrorMsg = ref('')
+const editSuccessMsg = ref('')
+const editForm = ref({
+  id: null,
+  uuid: '',
+  name: '',
+  species: 'canine',
+  breed: '',
+  size: 'medium',
+  primary_color: '',
+  status: 'in_shelter',
+  location_address: '',
+  distinctive_marks: ''
+})
+
 const getCleanPetName = (p) => {
   if (!p) return 'Mascota Rescatada'
   if (p.name && p.name !== 'string' && p.name !== 'not specified') {
@@ -179,6 +289,25 @@ const getCleanPetName = (p) => {
   const spec = p.species === 'feline' ? 'Gatito' : 'Canino'
   const breed = (p.breed && p.breed !== 'string') ? p.breed : 'Mestizo'
   return `${spec} ${breed} (${p.uuid})`
+}
+
+const getStatusLabel = (status) => {
+  switch(status) {
+    case 'in_shelter': return 'En Refugio'
+    case 'adoptable': return 'Adoptable'
+    case 'reunified': return 'Reunificado'
+    case 'lost': return 'Perdido'
+    default: return status || 'En Refugio'
+  }
+}
+
+const getStatusBadgeClass = (status) => {
+  switch(status) {
+    case 'reunified': return 'badge-emerald'
+    case 'adoptable': return 'badge-cyan'
+    case 'lost': return 'badge-rose'
+    default: return 'badge-primary'
+  }
 }
 
 const countActiveTreatments = computed(() => {
@@ -213,13 +342,80 @@ const selectPet = (p) => {
   medSuccessMsg.value = ''
 }
 
+const openEditModal = (pet) => {
+  editErrorMsg.value = ''
+  editSuccessMsg.value = ''
+  editForm.value = {
+    id: pet.id,
+    uuid: pet.uuid,
+    name: (pet.name && pet.name !== 'string') ? pet.name : getCleanPetName(pet),
+    species: pet.species || 'canine',
+    breed: (pet.breed && pet.breed !== 'string') ? pet.breed : 'Mestizo de Campaña',
+    size: pet.size || 'medium',
+    primary_color: (pet.primary_color && pet.primary_color !== 'string') ? pet.primary_color : 'Negro y Blanco',
+    status: pet.status || 'in_shelter',
+    location_address: pet.location_address || 'Caracas / Zona de Emergencia',
+    distinctive_marks: pet.distinctive_marks || ''
+  }
+  isEditModalOpen.value = true
+}
+
+const savePetEdit = async () => {
+  if (!editForm.value.id) return
+  isSavingEdit.value = true
+  editErrorMsg.value = ''
+  editSuccessMsg.value = ''
+
+  try {
+    const res = await fetch(`http://localhost:8000/api/pets/${editForm.value.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: editForm.value.name,
+        species: editForm.value.species,
+        breed: editForm.value.breed,
+        size: editForm.value.size,
+        primary_color: editForm.value.primary_color,
+        status: editForm.value.status,
+        location_address: editForm.value.location_address,
+        distinctive_marks: editForm.value.distinctive_marks
+      })
+    })
+
+    const data = await res.json()
+    if (data.success) {
+      editSuccessMsg.value = '¡Ficha de la mascota actualizada exitosamente!'
+      
+      // Actualización reactiva instantánea
+      if (selectedPet.value && selectedPet.value.id === editForm.value.id) {
+        Object.assign(selectedPet.value, data.data)
+      }
+      
+      const petInList = pets.value.find(p => p.id === editForm.value.id)
+      if (petInList) {
+        Object.assign(petInList, data.data)
+      }
+
+      setTimeout(() => {
+        isEditModalOpen.value = false
+        fetchPets()
+      }, 700)
+    } else {
+      editErrorMsg.value = data.error || 'Error al actualizar la ficha.'
+    }
+  } catch (err) {
+    editErrorMsg.value = 'Error al conectar con el servidor.'
+  } finally {
+    isSavingEdit.value = false
+  }
+}
+
 const formatDate = (d) => {
   if (!d) return new Date().toLocaleDateString('es-VE')
   const dateObj = new Date(d)
   return isNaN(dateObj.getTime()) ? new Date().toLocaleDateString('es-VE') : dateObj.toLocaleDateString('es-VE')
 }
 
-// ROBUST PRINTING FUNCTION WITH ONLOAD LISTENER (NO BLANK IMAGES)
 const printQrBadge = (pet) => {
   const qrDataPayload = encodeURIComponent(JSON.stringify({
     uuid: pet.uuid,
@@ -232,7 +428,7 @@ const printQrBadge = (pet) => {
 
   const printWin = window.open('', '_blank', 'width=700,height=800')
   if (!printWin) {
-    alert('Por favor habilita las ventanas emergentes (popups) en tu navegador para imprimir el collar QR.')
+    alert('Por favor habilita las ventanas emergentes en tu navegador para imprimir el collar QR.')
     return
   }
 
@@ -353,7 +549,7 @@ const printQrBadge = (pet) => {
               setTimeout(() => { window.print(); }, 200);
             };
             img.onerror = () => {
-              alert('Error al cargar la imagen QR. Se procederá a imprimir.');
+              alert('Error al cargar la imagen QR.');
               window.print();
             };
           }
@@ -501,6 +697,36 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
+.header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.btn-tool-edit {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-tool-edit:hover {
+  background: rgba(99, 102, 241, 0.3);
+  color: white;
+  border-color: #6366f1;
+}
+
+.btn-print-badge {
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .col-head h3 {
   font-size: 1.05rem;
   font-weight: 800;
@@ -518,12 +744,6 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   color: var(--text-main);
   cursor: pointer;
-}
-
-.btn-print-badge {
-  padding: 0.55rem 1.1rem;
-  font-size: 0.85rem;
-  font-weight: 700;
 }
 
 .pets-scroll {
@@ -617,10 +837,24 @@ onMounted(() => {
   border: 2px solid #6366f1;
 }
 
+.hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .hero-info h2 {
   font-size: 1.25rem;
   font-weight: 800;
-  margin-bottom: 0.25rem;
+}
+
+.btn-icon-edit {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  cursor: pointer;
 }
 
 .hero-sub {
@@ -765,5 +999,135 @@ onMounted(() => {
   color: #94a3b8;
   font-weight: 600;
   margin-right: 4px;
+}
+
+/* EDIT PET MODAL */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(10px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 600px;
+  background: #0d1322;
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  padding: 1.85rem;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.9);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.modal-title-group h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.modal-sub {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.btn-close-modal {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.edit-pet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-group.full {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #a5b4fc;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.btn-cancel {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.65rem 1.25rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-save {
+  padding: 0.65rem 1.5rem;
+  font-weight: 700;
 }
 </style>

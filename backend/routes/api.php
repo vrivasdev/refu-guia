@@ -27,6 +27,7 @@ Route::post('/auth/logout', [AuthController::class, 'logout']);
 // Mascotas y Reportes Ciudadanos
 Route::get('/pets', [PetController::class, 'index']);
 Route::get('/pets/{id}', [PetController::class, 'show']);
+Route::put('/pets/{id}', [PetController::class, 'update']);
 Route::post('/pets/report-citizen', [PetController::class, 'processCitizenReport']);
 
 // Expedientes Clínicos y QR
