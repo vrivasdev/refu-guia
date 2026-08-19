@@ -18,7 +18,7 @@
 
         <!-- DYNAMIC NAV MENU ACCORDING TO ROLE -->
         <nav class="nav-menu">
-          <!-- SIEMPRE VISIBLE: CHAT CIUDADANO -->
+          <!-- CHAT CIUDADANO -->
           <router-link to="/" class="nav-pill" active-class="nav-pill-active">
             <span class="pill-icon">💬</span>
             <span class="pill-label">Chat Ciudadano</span>
@@ -46,7 +46,7 @@
             <span class="pill-label">Matchmaker Hub</span>
           </router-link>
 
-          <!-- ADOPCION: publico, adopter, shelter_admin -->
+          <!-- ADOPCION: publico, adopter, citizen, shelter_admin -->
           <router-link to="/adopcion" class="nav-pill" active-class="nav-pill-active">
             <span class="pill-icon">❤️</span>
             <span class="pill-label">Adopción (15d)</span>
@@ -55,7 +55,7 @@
           <!-- MCP & SKILLS: EXCLUSIVO COORDINADORA / SHELTER_ADMIN -->
           <router-link 
             v-if="hasRole('shelter_admin')" 
-            to="/mcp" 
+            to="/mcp-explorer" 
             class="nav-pill" 
             active-class="nav-pill-active"
           >
@@ -77,48 +77,91 @@
 
         <!-- USER PROFILE & LOGIN / ACCOUNT MENU -->
         <div class="user-session-group">
-          <!-- LOGGED IN USER CHIP WITH DROPDOWN TRIGGER -->
+          <!-- LOGGED IN USER TRIGGER -->
           <div v-if="currentUser" class="user-account-wrapper">
-            <div 
-              class="user-profile-chip" 
+            <button 
+              class="user-profile-trigger" 
               @click.stop="toggleUserMenu"
-              :class="{ 'chip-active': isUserMenuOpen }"
+              :class="{ 'trigger-active': isUserMenuOpen }"
+              aria-label="Menú de usuario"
             >
-              <div class="user-avatar-circle">
-                {{ getUserInitials(currentUser.name) }}
+              <div class="avatar-container" :class="getAvatarGradientClass(currentUser.role)">
+                <span class="avatar-initials">{{ getUserInitials(currentUser.name) }}</span>
+                <span class="live-dot"></span>
               </div>
-              <div class="user-info-text">
-                <span class="user-name">{{ currentUser.name }}</span>
-                <span :class="['badge', getRoleBadgeClass(currentUser.role)]">
-                  {{ currentUser.role_label || currentUser.role }}
+              <div class="user-meta-brief">
+                <span class="user-display-name">{{ currentUser.name }}</span>
+                <span class="role-micro-badge" :class="getRoleBadgeClass(currentUser.role)">
+                  {{ getRoleShortLabel(currentUser.role) }}
                 </span>
               </div>
-              <span class="dropdown-chevron">▼</span>
-            </div>
+              <div class="chevron-box">
+                <svg class="chevron-svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </button>
 
-            <!-- ELEGANT & CLEAN DROPDOWN (NO REDUNDANT DATA) -->
-            <div v-if="isUserMenuOpen" class="user-dropdown-menu glass-card" @click.stop>
-              <div class="dropdown-meta-box">
-                <div class="user-email-text">{{ currentUser.email }}</div>
-                <div class="status-indicator">
-                  <span class="dot-online"></span> Sesión activa segura
+            <!-- SENIOR UX/UI DROPDOWN POPOVER WITH INSTANT PERSONA SWITCHER -->
+            <transition name="dropdown-anim">
+              <div v-if="isUserMenuOpen" class="user-dropdown-popover glass-card" @click.stop>
+                <!-- ACTIVE USER HEADER CARD -->
+                <div class="popover-user-card">
+                  <div class="popover-avatar-lg" :class="getAvatarGradientClass(currentUser.role)">
+                    <span>{{ getUserInitials(currentUser.name) }}</span>
+                  </div>
+                  <div class="popover-user-details">
+                    <div class="popover-name">{{ currentUser.name }}</div>
+                    <div class="popover-email">{{ currentUser.email }}</div>
+                    <div class="popover-role-tag" :class="getRoleBadgeClass(currentUser.role)">
+                      ● {{ getRoleFullTitle(currentUser.role) }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="popover-divider"></div>
+
+                <!-- INSTANT PERSONA / ROLE SWITCHER LIST -->
+                <div class="switcher-section">
+                  <div class="switcher-title">
+                    <span>CAMBIAR DE ROL / PERSONA</span>
+                    <span class="badge-mini">1-Click</span>
+                  </div>
+
+                  <div class="persona-options-list">
+                    <button 
+                      v-for="persona in demoPersonas" 
+                      :key="persona.role"
+                      :class="['persona-row-btn', currentUser.role === persona.role ? 'persona-active' : '']"
+                      @click="switchPersona(persona)"
+                    >
+                      <div class="persona-left">
+                        <span class="persona-icon-circle" :class="persona.avatarClass">
+                          {{ persona.icon }}
+                        </span>
+                        <div class="persona-info">
+                          <span class="persona-name">{{ persona.name }}</span>
+                          <span class="persona-role-sub">{{ persona.title }}</span>
+                        </div>
+                      </div>
+                      <span v-if="currentUser.role === persona.role" class="active-check-icon">✓</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="popover-divider"></div>
+
+                <!-- ACTIONS -->
+                <div class="popover-footer">
+                  <button class="btn-popover-logout" @click="handleLogout">
+                    <svg class="logout-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Cerrar Sesión</span>
+                  </button>
                 </div>
               </div>
-
-              <div class="dropdown-divider"></div>
-
-              <div class="dropdown-actions">
-                <button class="btn-dropdown-action" @click="openLoginForSwitch">
-                  <span class="action-icon">🔄</span>
-                  <span>Cambiar de Usuario / Rol</span>
-                </button>
-
-                <button class="btn-dropdown-logout" @click="handleLogout">
-                  <span class="action-icon">🚪</span>
-                  <span>Cerrar Sesión</span>
-                </button>
-              </div>
-            </div>
+            </transition>
           </div>
 
           <!-- LOGIN BUTTON IF GUEST -->
@@ -154,7 +197,7 @@
       </div>
     </footer>
 
-    <!-- LOGIN MODAL -->
+    <!-- LOGIN MODAL (FALLBACK) -->
     <LoginModal :isOpen="showLoginModal" @close="showLoginModal = false" />
   </div>
 </template>
@@ -164,11 +207,51 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from './services/auth'
 import LoginModal from './components/LoginModal.vue'
+import { showSuccess, showToast } from './utils/alerts'
 
 const router = useRouter()
-const { currentUser, logout, hasRole } = useAuth()
+const { currentUser, login, logout, hasRole } = useAuth()
 const showLoginModal = ref(false)
 const isUserMenuOpen = ref(false)
+
+const demoPersonas = [
+  {
+    name: 'Dra. Carmen López',
+    role: 'shelter_admin',
+    title: 'Coordinadora de Refugio',
+    email: 'carmen.lopez@refuguia.org',
+    password: 'carmen123',
+    icon: '🏥',
+    avatarClass: 'avatar-purple'
+  },
+  {
+    name: 'Carlos Mendoza',
+    role: 'rescuer',
+    title: 'Rescatista de Campo',
+    email: 'carlos.mendoza@refuguia.org',
+    password: 'carlos123',
+    icon: '👷',
+    avatarClass: 'avatar-amber'
+  },
+  {
+    name: 'María Fernández',
+    role: 'citizen',
+    title: 'Ciudadana Damnificada',
+    email: 'maria.fernandez@gmail.com',
+    password: 'maria123',
+    icon: '👩',
+    avatarClass: 'avatar-cyan'
+  },
+  {
+    name: 'Andrés Morales',
+    role: 'adopter',
+    title: 'Adoptante Post-Sismo',
+    email: 'andres.morales@gmail.com',
+    password: 'andres123',
+    icon: '❤️',
+    avatarClass: 'avatar-emerald'
+  }
+]
 
 const toggleUserMenu = () => {
   isUserMenuOpen.value = !isUserMenuOpen.value
@@ -178,15 +261,30 @@ const closeUserMenuOnClickOutside = () => {
   isUserMenuOpen.value = false
 }
 
-const openLoginForSwitch = () => {
+const switchPersona = async (persona) => {
+  if (currentUser.value?.role === persona.role) {
+    isUserMenuOpen.value = false
+    return
+  }
+
   isUserMenuOpen.value = false
-  showLoginModal.value = true
+  const res = await login(persona.email, persona.password)
+  if (res.success) {
+    showToast(`Sesión cambiada a: ${persona.name} (${persona.title})`, 'success')
+    // Redirigir a vista adecuada por rol si es necesario
+    if (persona.role === 'citizen') {
+      router.push('/')
+    } else if (persona.role === 'rescuer') {
+      router.push('/refugios')
+    }
+  }
 }
 
 const handleLogout = () => {
   isUserMenuOpen.value = false
   logout()
   router.push('/')
+  showToast('Has cerrado sesión correctamente', 'info')
 }
 
 const getUserInitials = (name) => {
@@ -194,13 +292,43 @@ const getUserInitials = (name) => {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
 }
 
+const getAvatarGradientClass = (role) => {
+  switch (role) {
+    case 'shelter_admin': return 'avatar-purple'
+    case 'rescuer': return 'avatar-amber'
+    case 'citizen': return 'avatar-cyan'
+    case 'adopter': return 'avatar-emerald'
+    default: return 'avatar-purple'
+  }
+}
+
 const getRoleBadgeClass = (role) => {
   switch (role) {
-    case 'shelter_admin': return 'badge-rose'
-    case 'rescuer': return 'badge-amber'
-    case 'citizen': return 'badge-cyan'
-    case 'adopter': return 'badge-emerald'
-    default: return 'badge-primary'
+    case 'shelter_admin': return 'badge-role-purple'
+    case 'rescuer': return 'badge-role-amber'
+    case 'citizen': return 'badge-role-cyan'
+    case 'adopter': return 'badge-role-emerald'
+    default: return 'badge-role-purple'
+  }
+}
+
+const getRoleShortLabel = (role) => {
+  switch (role) {
+    case 'shelter_admin': return 'Coordinadora'
+    case 'rescuer': return 'Rescatista'
+    case 'citizen': return 'Damnificada'
+    case 'adopter': return 'Adoptante'
+    default: return role
+  }
+}
+
+const getRoleFullTitle = (role) => {
+  switch (role) {
+    case 'shelter_admin': return 'Coordinadora de Refugio'
+    case 'rescuer': return 'Rescatista de Campo'
+    case 'citizen': return 'Ciudadana Damnificada'
+    case 'adopter': return 'Adoptante Post-Sismo'
+    default: return role
   }
 }
 </script>
@@ -216,8 +344,8 @@ const getRoleBadgeClass = (role) => {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(7, 10, 19, 0.85);
-  backdrop-filter: blur(20px);
+  background: rgba(7, 10, 19, 0.88);
+  backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -235,6 +363,7 @@ const getRoleBadgeClass = (role) => {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  text-decoration: none;
 }
 
 .logo-box {
@@ -252,19 +381,19 @@ const getRoleBadgeClass = (role) => {
 .brand-title {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
 }
 
 .version-tag {
   font-size: 0.65rem;
-  padding: 1px 6px;
-  background: rgba(6, 182, 212, 0.15);
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(6, 182, 212, 0.18);
   color: #38bdf8;
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  border-radius: var(--radius-full);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  font-weight: 700;
+  vertical-align: middle;
 }
 
 .brand-sub {
@@ -275,10 +404,10 @@ const getRoleBadgeClass = (role) => {
 .nav-menu {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  background: rgba(18, 28, 48, 0.5);
+  gap: 0.4rem;
+  background: rgba(14, 22, 38, 0.7);
   padding: 4px;
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   border: 1px solid var(--border);
 }
 
@@ -286,12 +415,13 @@ const getRoleBadgeClass = (role) => {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 0.95rem;
   border-radius: 10px;
+  color: var(--text-secondary);
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-secondary);
-  white-space: nowrap;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-pill:hover {
@@ -300,200 +430,369 @@ const getRoleBadgeClass = (role) => {
 }
 
 .nav-pill-active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(79, 70, 229, 0.25)) !important;
   color: #ffffff !important;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(79, 70, 229, 0.3)) !important;
-  border: 1px solid rgba(99, 102, 241, 0.5);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
 }
 
-.user-session-group {
-  display: flex;
-  align-items: center;
-}
-
+/* ========================================================= */
+/* SENIOR USER ACCOUNT TRIGGER BUTTON                        */
+/* ========================================================= */
 .user-account-wrapper {
   position: relative;
 }
 
-.btn-login-trigger {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(79, 70, 229, 0.25));
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  color: #a5b4fc;
-  padding: 0.5rem 1.1rem;
-  border-radius: var(--radius-md);
-  font-weight: 700;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.btn-login-trigger:hover {
-  background: rgba(99, 102, 241, 0.4);
-  color: white;
-  transform: translateY(-2px);
-}
-
-.user-profile-chip {
+.user-profile-trigger {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.45rem 0.95rem;
-  background: rgba(18, 28, 48, 0.9);
+  padding: 5px 12px 5px 6px;
+  background: rgba(14, 22, 38, 0.75);
   border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: var(--radius-md);
+  border-radius: 30px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.user-profile-chip:hover, .user-profile-chip.chip-active {
+.user-profile-trigger:hover, .trigger-active {
+  background: rgba(26, 38, 64, 0.95);
   border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.18);
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);
 }
 
-.user-avatar-circle {
-  width: 34px;
-  height: 34px;
+.avatar-container {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #38bdf8);
-  color: white;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.user-info-text {
+.avatar-initials {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.live-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #070a13;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.avatar-purple {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+}
+
+.avatar-amber {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.avatar-cyan {
+  background: linear-gradient(135deg, #06b6d4, #0284c7);
+}
+
+.avatar-emerald {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.user-meta-brief {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
 }
 
-.user-name {
+.user-display-name {
   font-size: 0.82rem;
   font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.1;
 }
 
-.dropdown-chevron {
+.role-micro-badge {
   font-size: 0.65rem;
-  color: var(--text-muted);
-  margin-left: 0.3rem;
-  transition: transform 0.2s ease;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-.chip-active .dropdown-chevron {
+.badge-role-purple {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+.badge-role-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.badge-role-cyan {
+  background: rgba(6, 182, 212, 0.2);
+  color: #67e8f9;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+}
+
+.badge-role-emerald {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.chevron-box {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.25s ease;
+}
+
+.trigger-active .chevron-box {
   transform: rotate(180deg);
 }
 
-/* CLEAN STREAMLINED DROPDOWN */
-.user-dropdown-menu {
+.chevron-svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ========================================================= */
+/* SENIOR UX/UI USER POPOVER DROPDOWN                        */
+/* ========================================================= */
+.user-dropdown-popover {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   right: 0;
-  width: 230px;
-  background: #0f172a;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  border-radius: var(--radius-md);
-  padding: 0.85rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+  width: 320px;
+  background: rgba(14, 22, 38, 0.98);
+  backdrop-filter: blur(28px);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 18px;
+  padding: 1.15rem;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.15);
   z-index: 1500;
-  animation: fadeIn 0.15s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
+/* TRANSITION ANIMATIONS */
+.dropdown-anim-enter-active, .dropdown-anim-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.dropdown-meta-box {
+.dropdown-anim-enter-from, .dropdown-anim-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+}
+
+.popover-user-card {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 0 4px 4px 4px;
+  align-items: center;
+  gap: 0.85rem;
+  padding-bottom: 0.85rem;
 }
 
-.user-email-text {
-  font-size: 0.74rem;
-  color: #94a3b8;
+.popover-avatar-lg {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.popover-user-details {
+  flex: 1;
+  overflow: hidden;
+}
+
+.popover-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.68rem;
-  color: #34d399;
-  font-weight: 600;
+.popover-email {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
 }
 
-.dot-online {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
+.popover-role-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
 }
 
-.dropdown-divider {
+.popover-divider {
   height: 1px;
   background: var(--border);
-  margin: 0.65rem 0;
+  margin: 0.75rem 0;
 }
 
-.dropdown-actions {
+/* PERSONA SWITCHER */
+.switcher-section {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.5rem;
 }
 
-.btn-dropdown-action {
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-main);
-  font-size: 0.78rem;
-  font-weight: 600;
+.switcher-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #a5b4fc;
+  letter-spacing: 0.05em;
+}
+
+.badge-mini {
+  font-size: 0.6rem;
+  background: rgba(99, 102, 241, 0.2);
+  color: #c7d2fe;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.persona-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.persona-row-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.5rem 0.65rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.btn-dropdown-action:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: #6366f1;
-}
-
-.btn-dropdown-logout {
   width: 100%;
-  padding: 0.55rem 0.75rem;
-  background: rgba(244, 63, 94, 0.12);
-  border: 1px solid rgba(244, 63, 94, 0.35);
-  border-radius: var(--radius-sm);
-  color: #fb7185;
+  text-align: left;
+}
+
+.persona-row-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.persona-active {
+  background: rgba(99, 102, 241, 0.22) !important;
+  border-color: #6366f1 !important;
+}
+
+.persona-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.persona-icon-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+.persona-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.persona-name {
   font-size: 0.8rem;
   font-weight: 700;
+  color: var(--text-main);
+}
+
+.persona-role-sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.active-check-icon {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #34d399;
+}
+
+.popover-footer {
+  padding-top: 0.2rem;
+}
+
+.btn-popover-logout {
+  width: 100%;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 0.78rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.btn-dropdown-logout:hover {
-  background: rgba(244, 63, 94, 0.3);
+.btn-popover-logout:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
   color: #ffffff;
-  border-color: #f43f5e;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
 }
 
-.action-icon {
-  font-size: 0.95rem;
+.logout-icon-svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* GUEST LOGIN BUTTON */
+.btn-login-trigger {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
 }
 
 .role-hint-banner {
@@ -515,6 +814,7 @@ const getRoleBadgeClass = (role) => {
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
+  border: none;
 }
 
 .page-container {
