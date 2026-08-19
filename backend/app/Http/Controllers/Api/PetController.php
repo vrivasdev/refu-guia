@@ -9,6 +9,7 @@ use App\Services\Ai\ChromaVectorService;
 use App\Services\Mcp\Skills\QrIdentitySkill;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use RuntimeException;
 
 class PetController extends Controller
 {
@@ -81,7 +82,7 @@ class PetController extends Controller
 
         $pet->update($validated);
 
-        // Actualizar vector en ChromaDB
+        // Actualizar vector en ChromaDB con embedding real
         $this->chromaService->indexPetDocument(
             $pet->id,
             "{$pet->name} {$pet->species} {$pet->breed} {$pet->primary_color} {$pet->distinctive_marks}",
@@ -114,50 +115,49 @@ class PetController extends Controller
         $rawText = $request->raw_text;
         $reportType = $request->report_type;
 
-        // 1. Extraer entidades con Qwen 2.5:1.5b
-        $nlpData = $this->slmService->extractEntities($rawText);
+        // 1. Inferencia Obligatoria con Modelo Local Ollama (Qwen 2.5:1.5B)
+        try {
+            $nlpData = $this->slmService->extractEntities($rawText);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => "El modelo local Ollama (qwen2.5:1.5b) debe estar ejecutándose para vectorizar y registrar el reporte. Por favor inicia Ollama con: ollama run qwen2.5:1.5b",
+                'details' => $e->getMessage()
+            ], 503);
+        }
 
-        // 2. Normalizar enumeraciones para la BD
-        $species = in_array(strtolower($nlpData['species'] ?? ''), ['canine', 'feline', 'other']) 
-            ? strtolower($nlpData['species']) 
-            : 'canine';
-
-        $size = in_array(strtolower($nlpData['size'] ?? ''), ['small', 'medium', 'large']) 
-            ? strtolower($nlpData['size']) 
-            : 'medium';
-
-        // 3. Generar UUID único de emergencia
+        // 2. Normalizar datos extraídos por el SLM
+        $species = $nlpData['species'];
+        $size = $nlpData['size'];
         $uuid = 'RG-' . date('Y') . '-' . strtoupper(substr(uniqid(), -6));
         $now = Carbon::now();
 
-        // 4. Crear registro en BD
+        // 3. Crear registro en BD MySQL
         $pet = Pet::create([
             'uuid' => $uuid,
             'report_type' => $reportType,
-            'name' => (!empty($nlpData['breed']) && $nlpData['breed'] !== 'string') 
-                ? "{$nlpData['breed']} ({$uuid})" 
-                : "Mascota Rescatada ({$uuid})",
+            'name' => "{$nlpData['breed']} ({$uuid})",
             'species' => $species,
-            'breed' => (!empty($nlpData['breed']) && $nlpData['breed'] !== 'string') ? $nlpData['breed'] : 'Mestizo de Campaña',
+            'breed' => $nlpData['breed'],
             'size' => $size,
-            'primary_color' => (!empty($nlpData['primary_color']) && $nlpData['primary_color'] !== 'string') ? $nlpData['primary_color'] : 'Negro y Blanco',
-            'secondary_color' => (!empty($nlpData['secondary_color']) && $nlpData['secondary_color'] !== 'string') ? $nlpData['secondary_color'] : 'Blanco',
-            'coat_pattern' => (!empty($nlpData['coat_pattern']) && $nlpData['coat_pattern'] !== 'string') ? $nlpData['coat_pattern'] : 'Bicolor',
-            'distinctive_marks' => ($nlpData['distinctive_marks'] ?? 'Mascota rescatada') . ' | Trauma: ' . ($nlpData['trauma_observed'] ?? 'Ninguno'),
+            'primary_color' => $nlpData['primary_color'],
+            'secondary_color' => $nlpData['secondary_color'],
+            'coat_pattern' => $nlpData['coat_pattern'],
+            'distinctive_marks' => $nlpData['distinctive_marks'] . ' | Trauma: ' . $nlpData['trauma_observed'],
             'status' => ($reportType === 'lost') ? 'lost' : 'in_shelter',
             'photo_url' => $request->photo_url ?: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600',
             'latitude' => $request->latitude ?? 10.5000,
             'longitude' => $request->longitude ?? -66.9167,
-            'location_address' => (!empty($nlpData['location_extracted']) && $nlpData['location_extracted'] !== 'string') ? $nlpData['location_extracted'] : 'Caracas / Zona del Sismo',
+            'location_address' => $nlpData['location_extracted'],
             'rescue_date' => $now,
             'grace_period_ends_at' => ($reportType === 'found') ? $now->copy()->addDays(15) : null,
             'user_id' => 1
         ]);
 
-        // 5. Generar Credencial QR
+        // 4. Generar Credencial QR
         $qrData = $this->qrSkill->execute(['pet_id' => $pet->id]);
 
-        // 6. Indexar en ChromaDB
+        // 5. Indexación y Vectorización Real en ChromaDB
         $this->chromaService->indexPetDocument(
             $pet->id,
             "{$pet->name} {$pet->species} {$pet->breed} {$pet->primary_color} {$pet->distinctive_marks}",
@@ -171,7 +171,7 @@ class PetController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Reporte procesado exitosamente por el Agente NLP y registrado en RefuGuía.',
+            'message' => 'Reporte vectorizado e indexado exitosamente por el Modelo Local Ollama (Qwen 2.5:1.5B).',
             'pet' => $pet,
             'nlp_extraction' => $nlpData,
             'qr_badge' => $qrData['data'] ?? []

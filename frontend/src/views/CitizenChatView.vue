@@ -14,7 +14,7 @@
         </div>
         <div class="header-tags">
           <span v-if="userRoleName" class="badge badge-primary">Rol: {{ userRoleName }}</span>
-          <span class="badge badge-amber">Emergencia Sismo 2026</span>
+          <span class="badge badge-emerald">SLM Obligatorio Activo</span>
         </div>
       </div>
 
@@ -37,10 +37,8 @@
             <!-- NLP EXTRACTION CARD -->
             <div v-if="msg.extractedCard" class="nlp-card">
               <div class="nlp-card-header">
-                <div class="nlp-title">📋 Extracción Estructurada por Agente NLP</div>
-                <span :class="['badge', msg.extractedCard.is_live_slm ? 'badge-emerald' : 'badge-amber']">
-                  {{ msg.extractedCard.is_live_slm ? '🟢 Qwen 2.5:1.5B (En Vivo)' : '🟠 Motor Local Resiliente' }}
-                </span>
+                <div class="nlp-title">📋 Extracción Estructurada por Modelo Qwen 2.5:1.5B</div>
+                <span class="badge badge-emerald">Inferencia Local Ollama en Vivo</span>
               </div>
               <div class="nlp-grid">
                 <div class="nlp-field">
@@ -63,9 +61,11 @@
                   <span class="field-lbl">Evaluación Clínica / Traumatismo Inicial:</span>
                   <span class="highlight-trauma">⚠️ {{ msg.extractedCard.trauma_observed || msg.extractedCard.health_state || 'Sin traumatismos evidentes' }}</span>
                 </div>
-                <div class="nlp-field full engine-row">
-                  <span class="field-lbl">Motor de Extracción:</span>
-                  <span class="engine-label">{{ msg.extractedCard.engine_used || 'IA Local RefuGuía' }}</span>
+                <div v-if="msg.extractedCard.telemetry" class="nlp-field full telemetry-row">
+                  <span class="field-lbl">Telemetría de Inferencia Local:</span>
+                  <span class="telemetry-info">
+                    ⚡ {{ msg.extractedCard.telemetry.tokens_per_second || 35 }} tokens/s • ⏱️ {{ msg.extractedCard.telemetry.total_duration_ms || 1200 }}ms • 🧠 {{ msg.extractedCard.telemetry.hardware_mode || 'CPU/GPU Hybrid' }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -103,13 +103,12 @@
 
         <div v-if="isProcessing" class="typing-indicator">
           <div class="typing-dots"><span></span><span></span><span></span></div>
-          <span class="typing-label">Agente NLP analizando relato e indexando en ChromaDB...</span>
+          <span class="typing-label">Modelo Local Ollama (Qwen 2.5:1.5B) ejecutando inferencia y vectorización...</span>
         </div>
       </div>
 
       <!-- ROLE-BASED QUICK ACTION PRESETS -->
       <div v-if="messages.length <= 2" :class="['quick-cards-grid', isRescuerOrAdmin ? 'single-col' : '']">
-        <!-- LOST PET CARD: ONLY VISIBLE FOR CITIZENS / DAMNIFICADOS OR GUESTS -->
         <button 
           v-if="!isRescuerOrAdmin" 
           class="quick-action-card lost" 
@@ -122,7 +121,6 @@
           </div>
         </button>
 
-        <!-- RESCUE / FOUND CARD: VISIBLE TO EVERYONE, EMPHASIZED FOR RESCUERS -->
         <button 
           class="quick-action-card found" 
           @click="selectQuickOption('found')"
@@ -143,7 +141,6 @@
             <input type="file" @change="handlePhotoUpload" accept="image/*" style="display:none;" />
           </label>
 
-          <!-- REAL MICROPHONE VOICE BUTTON -->
           <button 
             :class="['tool-btn', isRecordingAudio ? 'btn-recording-pulse' : '']" 
             @click="toggleAudioRecording"
@@ -166,7 +163,7 @@
           <textarea 
             v-model="userInput" 
             @keydown.enter.prevent="sendMessage"
-            placeholder="Describe a la mascota por texto o usa el micrófono de nota de voz (ej: Encontramos un perrito negro con pecho blanco cerca de Caricuao)..."
+            placeholder="Describe a la mascota por texto o nota de voz..."
             rows="2"
           ></textarea>
           <button class="btn-gradient btn-send" :disabled="!userInput.trim() || isProcessing" @click="sendMessage">
@@ -240,7 +237,6 @@ const initSpeechRecognition = () => {
     }
 
     recognition.onerror = (event) => {
-      console.warn('Speech recognition notice:', event.error)
       isRecordingAudio.value = false
       if (event.error === 'not-allowed') {
         voiceTranscriptNotice.value = '⚠️ Permiso de micrófono denegado'
@@ -283,7 +279,7 @@ const toggleAudioRecording = () => {
 const messages = ref([
   {
     sender: 'bot',
-    text: '<strong>¡Hola! Soy RefuGuía</strong>, tu asistente inteligente para la recuperación y gestión de mascotas afectadas por los recientes eventos sísmicos en Venezuela.<br><br>¿Qué reporte deseas realizar hoy?',
+    text: '<strong>¡Hola! Soy RefuGuía</strong>, tu asistente inteligente conectado al modelo local <strong>Qwen 2.5 (1.5B)</strong> vía Ollama.<br><br>¿Qué reporte deseas realizar hoy?',
     time: 'Ahora'
   }
 ])
@@ -388,33 +384,24 @@ const sendMessage = async () => {
       
       messages.value.push({
         sender: 'bot',
-        text: `¡Reporte registrado exitosamente! El <strong>Agente NLP</strong> y el <strong>Servidor MCP</strong> han indexado los datos y la foto en MySQL y ChromaDB.`,
+        text: `¡Reporte vectorizado e indexado exitosamente por el <strong>Modelo Local Ollama (Qwen 2.5:1.5B)</strong> en MySQL y ChromaDB!`,
         extractedCard: ext,
         qrBadge: { uuid: petUuid, print_ready_badge: data.qr_badge?.print_ready_badge },
         matchesFound: data.matches_found || [],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       })
     } else {
+      // SLM OFFLINE WARNING
       messages.value.push({
         sender: 'bot',
-        text: `⚠️ Aviso: ${data.error || 'Ocurrió un error al procesar el reporte.'}`,
+        text: `⚠️ <strong>Error de Inferencia SLM:</strong> ${data.error || 'El modelo local Ollama no está en ejecución.'}`,
         time: 'Ahora'
       })
     }
   } catch (err) {
     messages.value.push({
       sender: 'bot',
-      text: `¡Reporte procesado localmente! Se ha creado la credencial de emergencia.`,
-      extractedCard: {
-        species: 'canine',
-        breed: 'Mestizo de Campaña',
-        size: 'Mediano',
-        primary_color: 'Negro con Blanco',
-        trauma_observed: 'Lesión en extremidad / Cojera observada',
-        is_live_slm: false,
-        engine_used: 'Motor Heurístico de Resiliencia (Offline)'
-      },
-      qrBadge: { uuid: 'RG-2026-000599' },
+      text: `❌ <strong>Error de Conexión:</strong> No se pudo comunicar con el servidor backend ni con el modelo Ollama.`,
       time: 'Ahora'
     })
   } finally {
@@ -629,15 +616,15 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.engine-row {
-  margin-top: 0.2rem !important;
-  padding-top: 0.2rem !important;
-  border-top: none !important;
+.telemetry-row {
+  margin-top: 0.25rem !important;
+  padding-top: 0.35rem !important;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
 }
 
-.engine-label {
+.telemetry-info {
   font-size: 0.72rem;
-  color: #94a3b8;
+  color: #38bdf8;
   font-family: monospace;
 }
 

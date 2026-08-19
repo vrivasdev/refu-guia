@@ -4,6 +4,7 @@ namespace App\Services\Ai;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class LocalSlmService
 {
@@ -18,6 +19,9 @@ class LocalSlmService
         $this->sanitizer = $sanitizer;
     }
 
+    /**
+     * Inferencia estricta: Solo ejecuta si el modelo Ollama está en línea.
+     */
     public function generate(string $prompt, string $systemPrompt = '', array $options = []): array
     {
         $sanitizedPrompt = $this->sanitizer->sanitize($prompt);
@@ -38,7 +42,7 @@ class LocalSlmService
         $startTime = microtime(true);
 
         try {
-            $response = Http::timeout(6)->post("{$this->host}/api/generate", $payload);
+            $response = Http::timeout(15)->post("{$this->host}/api/generate", $payload);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -63,77 +67,89 @@ class LocalSlmService
                         'hardware_mode' => 'CPU / GPU Hybrid (Local On-Premise)'
                     ]
                 ];
+            } else {
+                throw new RuntimeException("Ollama respondió con código de error HTTP {$response->status()}: {$response->body()}");
             }
         } catch (\Exception $e) {
-            Log::info("Ollama no activo o timeout, activando motor de resiliencia local.");
+            Log::error("Fallo de inferencia estricta en Ollama: " . $e->getMessage());
+            return [
+                'success' => false,
+                'is_live_slm' => false,
+                'error' => "El modelo local Ollama ({$this->model}) no está respondiendo en {$this->host}. Debes iniciar Ollama con: ollama run {$this->model}",
+                'engine_used' => 'Ollama Offline (Error)'
+            ];
+        }
+    }
+
+    /**
+     * Extracción estricta de entidades vía SLM Qwen 2.5
+     */
+    public function extractEntities(string $rawText): array
+    {
+        $systemPrompt = 'Extrae en JSON estricto: {"species":"canine"|"feline","breed":"string","size":"small"|"medium"|"large","primary_color":"string","secondary_color":"string","coat_pattern":"string","distinctive_marks":"string","trauma_observed":"string","location_extracted":"string"}. Sin explicaciones adicionales.';
+
+        $res = $this->generate("Texto a analizar: \"{$rawText}\"", $systemPrompt, ['temperature' => 0.1, 'num_predict' => 256]);
+
+        if (!$res['success']) {
+            throw new RuntimeException($res['error']);
         }
 
-        // Motor de resiliencia heurístico local si Ollama está inactivo
+        $rawResponse = $res['response'] ?? '';
+        $extracted = [];
+
+        if (preg_match('/\{.*?\}/s', $rawResponse, $matches)) {
+            $json = json_decode($matches[0], true);
+            if ($json && is_array($json)) {
+                $extracted = $json;
+            }
+        }
+
+        // Sanitizar claves obligatorias extraídas por el modelo
         return [
-            'success' => true,
-            'is_live_slm' => false,
-            'engine_used' => 'Motor Heurístico de Resiliencia (Ollama Inactivo)',
-            'model' => "{$this->model} (Modo Resiliencia)",
-            'response' => "Reporte procesado exitosamente por motor de emergencia local.",
-            'telemetry' => [
-                'total_duration_ms' => 5.0,
-                'eval_count_tokens' => 25,
-                'tokens_per_second' => 95.0,
-                'hardware_mode' => 'Local Edge Engine (Offline)'
-            ]
+            'is_live_slm' => true,
+            'engine_used' => "Ollama ({$this->model} en Vivo)",
+            'species' => in_array(strtolower($extracted['species'] ?? ''), ['canine', 'feline', 'other']) ? strtolower($extracted['species']) : 'canine',
+            'breed' => (!empty($extracted['breed']) && $extracted['breed'] !== 'string') ? $extracted['breed'] : 'Mestizo de Campaña',
+            'size' => in_array(strtolower($extracted['size'] ?? ''), ['small', 'medium', 'large']) ? strtolower($extracted['size']) : 'medium',
+            'primary_color' => (!empty($extracted['primary_color']) && $extracted['primary_color'] !== 'string') ? $extracted['primary_color'] : 'Negro y Blanco',
+            'secondary_color' => (!empty($extracted['secondary_color']) && $extracted['secondary_color'] !== 'string') ? $extracted['secondary_color'] : 'Blanco',
+            'coat_pattern' => (!empty($extracted['coat_pattern']) && $extracted['coat_pattern'] !== 'string') ? $extracted['coat_pattern'] : 'Bicolor',
+            'distinctive_marks' => (!empty($extracted['distinctive_marks']) && $extracted['distinctive_marks'] !== 'string') ? $extracted['distinctive_marks'] : 'Mascota rescatada post-sismo',
+            'trauma_observed' => (!empty($extracted['trauma_observed']) && $extracted['trauma_observed'] !== 'string') ? $extracted['trauma_observed'] : 'Sin traumatismos evidentes',
+            'location_extracted' => (!empty($extracted['location_extracted']) && $extracted['location_extracted'] !== 'string') ? $extracted['location_extracted'] : 'Caracas / Zona del Sismo',
+            'raw_slm_response' => $rawResponse,
+            'telemetry' => $res['telemetry'] ?? []
         ];
     }
 
-    public function extractEntities(string $rawText): array
+    /**
+     * Generar Embeddings vectoriales reales desde Ollama (API /api/embeddings)
+     */
+    public function generateEmbedding(string $text): array
     {
-        // 1. Detección heurística de respaldo
-        $isFeline = (stripos($rawText, 'gato') !== false || stripos($rawText, 'gata') !== false || stripos($rawText, 'minino') !== false || stripos($rawText, 'felin') !== false);
-        $isSmall = (stripos($rawText, 'pequeñ') !== false || stripos($rawText, 'chiquit') !== false || stripos($rawText, 'cachorro') !== false);
-        $isLarge = (stripos($rawText, 'grande') !== false || stripos($rawText, 'gigante') !== false);
+        try {
+            $response = Http::timeout(10)->post("{$this->host}/api/embeddings", [
+                'model' => $this->model,
+                'prompt' => $text
+            ]);
 
-        $color = 'Negro';
-        if (stripos($rawText, 'blanco') !== false && stripos($rawText, 'negro') !== false) $color = 'Negro y Blanco';
-        elseif (stripos($rawText, 'canela') !== false || stripos($rawText, 'marr') !== false) $color = 'Canela / Marrón';
-        elseif (stripos($rawText, 'dorad') !== false || stripos($rawText, 'golden') !== false || stripos($rawText, 'rubio') !== false) $color = 'Dorado / Canela';
-        elseif (stripos($rawText, 'gris') !== false || stripos($rawText, 'atigrad') !== false) $color = 'Gris Atigrado';
+            if ($response->successful()) {
+                $embedding = $response->json('embedding') ?? [];
+                if (!empty($embedding)) {
+                    return $embedding;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning("Error generando embedding en Ollama: " . $e->getMessage());
+        }
 
-        $trauma = 'Sin traumatismos evidentes';
-        if (stripos($rawText, 'pata') !== false || stripos($rawText, 'patita') !== false || stripos($rawText, 'cojea') !== false) $trauma = 'Lesión en extremidad / Cojera';
-        elseif (stripos($rawText, 'herida') !== false || stripos($rawText, 'sangr') !== false || stripos($rawText, 'oreja') !== false) $trauma = 'Herida visible post-sismo';
-        elseif (stripos($rawText, 'tiembla') !== false || stripos($rawText, 'asustad') !== false || stripos($rawText, 'frio') !== false) $trauma = 'Estrés agudo / Hipotermia';
-
-        $breed = 'Mestizo de Campaña';
-        if (stripos($rawText, 'golden') !== false) $breed = 'Golden Retriever Mestizo';
-        elseif (stripos($rawText, 'collie') !== false) $breed = 'Border Collie Mestizo';
-        elseif (stripos($rawText, 'poodle') !== false || stripos($rawText, 'puddle') !== false) $breed = 'Poodle Mestizo';
-
-        $location = 'Caracas / La Guaira';
-        if (stripos($rawText, 'caricuao') !== false) $location = 'Caricuao, Caracas';
-        elseif (stripos($rawText, 'catia') !== false) $location = 'Catia, Caracas';
-        elseif (stripos($rawText, 'guaira') !== false) $location = 'La Guaira (Zona Costera)';
-
-        // 2. Intentar llamada al SLM en Ollama si está activo
-        $res = $this->generate("Texto: \"{$rawText}\"", 'Extrae entidades de la mascota en formato JSON.', ['num_predict' => 200]);
-
-        return [
-            'is_live_slm' => $res['is_live_slm'] ?? false,
-            'engine_used' => $res['engine_used'] ?? 'Motor Local de Emergencia',
-            'species' => $isFeline ? 'feline' : 'canine',
-            'breed' => $breed,
-            'size' => $isSmall ? 'small' : ($isLarge ? 'large' : 'medium'),
-            'primary_color' => $color,
-            'secondary_color' => 'Blanco',
-            'coat_pattern' => 'Bicolor con manchas',
-            'distinctive_marks' => 'Mascota rescatada en emergencia post-sismo',
-            'trauma_observed' => $trauma,
-            'location_extracted' => $location
-        ];
+        return [];
     }
 
     public function getHealth(): array
     {
         try {
-            $res = Http::timeout(2)->get("{$this->host}/api/tags");
+            $res = Http::timeout(3)->get("{$this->host}/api/tags");
             if ($res->successful()) {
                 $models = $res->json('models') ?? [];
                 $hasTarget = false;
