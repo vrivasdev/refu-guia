@@ -1,0 +1,102 @@
+services:
+  database:
+    image: mysql:8.0
+    container_name: refuguia_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: refuguia_db
+      MYSQL_USER: refu_user
+      MYSQL_PASSWORD: refu_password_secret
+      MYSQL_ROOT_PASSWORD: root_password_secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - refuguia_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: refuguia_chromadb
+    restart: unless-stopped
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSISTENCE_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - refuguia_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: refuguia_backend
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=RefuGuia_API
+      - APP_ENV=local
+      - APP_KEY=base64:X8vN9K4q2F1Z+wQj6M0yL8dE5T3hA7bC9xV1rO3pY6s=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8000
+      - DB_CONNECTION=mysql
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_DATABASE=refuguia_db
+      - DB_USERNAME=refu_user
+      - DB_PASSWORD=refu_password_secret
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen2.5:1.5b
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      database:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    networks:
+      - refuguia_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    container_name: refuguia_frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    networks:
+      - refuguia_network
+
+networks:
+  refuguia_network:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+  chroma_data:
+    driver: local
