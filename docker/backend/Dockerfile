@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     unzip \
     bash \
     freetype-dev \
-    libjpeg-turbo-dev
+    libjpeg-turbo-dev \
+    linux-headers
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd sockets
