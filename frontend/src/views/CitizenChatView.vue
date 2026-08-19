@@ -27,6 +27,11 @@
         >
           <div class="avatar-icon" v-if="msg.sender === 'bot'">🐾</div>
           <div class="bubble-wrapper">
+            <!-- USER ATTACHED PHOTO THUMBNAIL -->
+            <div v-if="msg.attachedPhoto" class="attached-bubble-img-wrap">
+              <img :src="msg.attachedPhoto" class="attached-bubble-img" alt="Foto adjunta" />
+            </div>
+
             <div class="bubble-text" v-html="msg.text"></div>
 
             <!-- NLP EXTRACTION CARD -->
@@ -42,7 +47,7 @@
                 </div>
                 <div class="nlp-field">
                   <span class="field-lbl">Raza / Tipo:</span>
-                  <strong>{{ msg.extractedCard.breed || 'Mestizo' }}</strong>
+                  <strong>{{ msg.extractedCard.breed || 'Mestizo de Campaña' }}</strong>
                 </div>
                 <div class="nlp-field">
                   <span class="field-lbl">Tamaño:</span>
@@ -50,7 +55,7 @@
                 </div>
                 <div class="nlp-field">
                   <span class="field-lbl">Color Primario:</span>
-                  <strong>{{ msg.extractedCard.primary_color || 'Negro' }}</strong>
+                  <strong>{{ msg.extractedCard.primary_color || 'Negro y Blanco' }}</strong>
                 </div>
                 <div class="nlp-field full">
                   <span class="field-lbl">Evaluación Clínica / Traumatismo Inicial:</span>
@@ -92,7 +97,7 @@
 
         <div v-if="isProcessing" class="typing-indicator">
           <div class="typing-dots"><span></span><span></span><span></span></div>
-          <span class="typing-label">Agente NLP analizando relato e invocando Skills MCP en Ollama (Qwen 2.5)...</span>
+          <span class="typing-label">Agente NLP analizando relato e indexando foto en ChromaDB...</span>
         </div>
       </div>
 
@@ -124,7 +129,11 @@
           <button class="tool-btn" @click="simulateVoiceInput">
             <span>🎙️ Simular Nota de Voz</span>
           </button>
-          <span v-if="selectedPhotoName" class="attachment-pill">📎 {{ selectedPhotoName }}</span>
+          <div v-if="uploadedPhotoBase64" class="attached-preview-pill">
+            <img :src="uploadedPhotoBase64" class="mini-thumb" />
+            <span>{{ selectedPhotoName || 'Foto Adjunta' }}</span>
+            <button class="btn-remove-attachment" @click="removeAttachedPhoto">✕</button>
+          </div>
         </div>
 
         <div class="input-form">
@@ -146,10 +155,13 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 
+const defaultFallbackPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
+
 const threadRef = ref(null)
 const userInput = ref('')
 const isProcessing = ref(false)
 const selectedPhotoName = ref('')
+const uploadedPhotoBase64 = ref('')
 const currentReportType = ref('found')
 
 const messages = ref([
@@ -182,9 +194,23 @@ const simulateVoiceInput = () => {
 }
 
 const handlePhotoUpload = (e) => {
-  if (e.target.files && e.target.files[0]) {
-    selectedPhotoName.value = e.target.files[0].name
+  const file = e.target.files?.[0]
+  if (!file) return
+
+  selectedPhotoName.value = file.name
+
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    if (event.target?.result) {
+      uploadedPhotoBase64.value = event.target.result
+    }
   }
+  reader.readAsDataURL(file)
+}
+
+const removeAttachedPhoto = () => {
+  uploadedPhotoBase64.value = ''
+  selectedPhotoName.value = ''
 }
 
 const getQrImageUrl = (qrBadge) => {
@@ -199,12 +225,16 @@ const sendMessage = async () => {
   if (!userInput.value.trim() || isProcessing.value) return
 
   const textToSend = userInput.value.trim()
+  const attachedPhoto = uploadedPhotoBase64.value
+
   userInput.value = ''
+  uploadedPhotoBase64.value = ''
   selectedPhotoName.value = ''
 
   messages.value.push({
     sender: 'user',
     text: textToSend,
+    attachedPhoto: attachedPhoto || null,
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   })
   scrollToBottom()
@@ -219,7 +249,7 @@ const sendMessage = async () => {
         raw_text: textToSend,
         report_type: currentReportType.value,
         location_address: 'Caracas / Zona de Emergencia',
-        photo_url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
+        photo_url: attachedPhoto || defaultFallbackPhoto
       })
     })
     const data = await res.json()
@@ -230,7 +260,7 @@ const sendMessage = async () => {
       
       messages.value.push({
         sender: 'bot',
-        text: `¡Reporte registrado exitosamente! El <strong>Agente NLP (Qwen 2.5)</strong> y el <strong>Servidor MCP</strong> han indexado los datos en MySQL y ChromaDB.`,
+        text: `¡Reporte registrado exitosamente! El <strong>Agente NLP (Qwen 2.5)</strong> y el <strong>Servidor MCP</strong> han indexado los datos y la foto en MySQL y ChromaDB.`,
         extractedCard: ext,
         qrBadge: { uuid: petUuid, print_ready_badge: data.qr_badge?.print_ready_badge },
         matchesFound: data.matches_found || [],
@@ -244,7 +274,6 @@ const sendMessage = async () => {
       })
     }
   } catch (err) {
-    // Fallback amigable
     messages.value.push({
       sender: 'bot',
       text: `¡Reporte procesado localmente! Se ha creado la credencial de emergencia.`,
@@ -354,6 +383,20 @@ onMounted(() => {
 .msg-user {
   align-self: flex-end;
   flex-direction: row-reverse;
+}
+
+.attached-bubble-img-wrap {
+  margin-bottom: 0.5rem;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 220px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.attached-bubble-img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 .msg-user .bubble-text {
@@ -598,10 +641,32 @@ onMounted(() => {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.attachment-pill {
-  font-size: 0.75rem;
-  color: #38bdf8;
-  font-weight: 600;
+.attached-preview-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.74rem;
+  color: #c7d2fe;
+}
+
+.mini-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.btn-remove-attachment {
+  background: transparent;
+  border: none;
+  color: #fb7185;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 2px;
 }
 
 .input-form {
