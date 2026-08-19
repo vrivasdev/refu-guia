@@ -44,18 +44,29 @@
           </router-link>
         </nav>
 
-        <!-- STATUS WIDGET -->
-        <div class="system-status-chip">
-          <div class="status-pulse-dot"></div>
-          <div class="status-texts">
-            <span class="status-mode">SLM Local Activo</span>
-            <span class="status-engine">qwen2.5:1.5b • ChromaDB</span>
+        <!-- USER PROFILE & LOGIN BUTTON -->
+        <div class="user-session-group">
+          <!-- LOGGED IN USER PILL -->
+          <div v-if="currentUser" class="user-profile-chip" @click="showLoginModal = true">
+            <div class="user-avatar-circle">
+              {{ getUserInitials(currentUser.name) }}
+            </div>
+            <div class="user-info-text">
+              <span class="user-name">{{ currentUser.name }}</span>
+              <span :class="['badge', getRoleBadgeClass(currentUser.role)]">{{ currentUser.role_label || currentUser.role }}</span>
+            </div>
+            <button class="btn-logout" @click.stop="logout" title="Cerrar Sesión">✕</button>
           </div>
+
+          <!-- LOGIN BUTTON IF GUEST -->
+          <button v-else class="btn-login-trigger" @click="showLoginModal = true">
+            <span>🔑 Iniciar Sesión</span>
+          </button>
         </div>
       </div>
     </header>
 
-    <!-- CONTENT AREA -->
+    <!-- MAIN VIEW -->
     <main class="page-container">
       <router-view />
     </main>
@@ -69,12 +80,39 @@
         <div class="footer-badges">
           <span class="badge badge-primary">100% IA Local (SLM)</span>
           <span class="badge badge-cyan">Protocolo MCP</span>
-          <span class="badge badge-emerald">MySQL + ChromaDB</span>
+          <span class="badge badge-emerald">Control de Sesiones RBAC</span>
         </div>
       </div>
     </footer>
+
+    <!-- LOGIN MODAL -->
+    <LoginModal :isOpen="showLoginModal" @close="showLoginModal = false" />
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import { useAuth } from './services/auth'
+import LoginModal from './components/LoginModal.vue'
+
+const { currentUser, logout } = useAuth()
+const showLoginModal = ref(false)
+
+const getUserInitials = (name) => {
+  if (!name) return 'U'
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+}
+
+const getRoleBadgeClass = (role) => {
+  switch (role) {
+    case 'shelter_admin': return 'badge-rose'
+    case 'rescuer': return 'badge-amber'
+    case 'citizen': return 'badge-cyan'
+    case 'adopter': return 'badge-emerald'
+    default: return 'badge-primary'
+  }
+}
+</script>
 
 <style scoped>
 .app-wrapper {
@@ -89,9 +127,7 @@
   z-index: 1000;
   background: rgba(7, 10, 19, 0.85);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .nav-content {
@@ -108,7 +144,6 @@
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  cursor: pointer;
 }
 
 .logo-box {
@@ -121,16 +156,12 @@
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
 }
 
 .brand-title {
   font-size: 1.15rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(120deg, #ffffff, #c7d2fe);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #fff;
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -138,20 +169,16 @@
 
 .version-tag {
   font-size: 0.65rem;
-  font-weight: 700;
   padding: 1px 6px;
   background: rgba(6, 182, 212, 0.15);
   color: #38bdf8;
   border: 1px solid rgba(6, 182, 212, 0.3);
   border-radius: var(--radius-full);
-  -webkit-text-fill-color: initial;
 }
 
 .brand-sub {
   font-size: 0.68rem;
   color: var(--text-muted);
-  font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .nav-menu {
@@ -173,7 +200,6 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-secondary);
-  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
@@ -186,48 +212,85 @@
   color: #ffffff !important;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(79, 70, 229, 0.3)) !important;
   border: 1px solid rgba(99, 102, 241, 0.5);
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.25);
 }
 
-.system-status-chip {
+.user-session-group {
+  display: flex;
+  align-items: center;
+}
+
+.btn-login-trigger {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(79, 70, 229, 0.25));
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.btn-login-trigger:hover {
+  background: rgba(99, 102, 241, 0.4);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.user-profile-chip {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.4rem 0.85rem;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.35rem 0.75rem;
+  background: rgba(18, 28, 48, 0.8);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.status-pulse-dot {
-  width: 9px;
-  height: 9px;
+.user-profile-chip:hover {
+  border-color: #6366f1;
+}
+
+.user-avatar-circle {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--emerald);
-  box-shadow: 0 0 10px var(--emerald);
-  animation: pulse-ring 2s infinite;
+  background: linear-gradient(135deg, #6366f1, #38bdf8);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
-@keyframes pulse-ring {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.7; }
-}
-
-.status-texts {
+.user-info-text {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
-.status-mode {
-  font-size: 0.75rem;
+.user-name {
+  font-size: 0.78rem;
   font-weight: 700;
-  color: #34d399;
 }
 
-.status-engine {
-  font-size: 0.65rem;
+.btn-logout {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  margin-left: 0.3rem;
+}
+
+.btn-logout:hover {
+  background: rgba(244, 63, 94, 0.3);
+  color: #fb7185;
 }
 
 .page-container {
@@ -259,11 +322,5 @@
 .footer-badges {
   display: flex;
   gap: 0.5rem;
-}
-
-@media (max-width: 1080px) {
-  .nav-menu {
-    overflow-x: auto;
-  }
 }
 </style>

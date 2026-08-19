@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PetController;
 use App\Http\Controllers\Api\ClinicalRecordController;
 use App\Http\Controllers\Api\MatchController;
@@ -13,9 +14,15 @@ Route::get('/health', function () {
         'status' => 'healthy',
         'system' => 'RefuGuia Backend API',
         'timestamp' => now()->toIso8601String(),
+        'auth_support' => 'Enabled (Sanctum/Session RBAC)',
         'ai_architecture' => 'Local SLM + MCP Tools + Dual Memory (MySQL + ChromaDB)'
     ]);
 });
+
+// Autenticación y Sesiones
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/auth/me', [AuthController::class, 'me']);
+Route::post('/auth/logout', [AuthController::class, 'logout']);
 
 // Mascotas y Reportes Ciudadanos
 Route::get('/pets', [PetController::class, 'index']);
