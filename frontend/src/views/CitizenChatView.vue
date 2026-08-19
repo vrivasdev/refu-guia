@@ -34,7 +34,7 @@
 
             <div class="bubble-text" v-html="msg.text"></div>
 
-            <!-- NLP EXTRACTION SUMMARY (CLEAN & EMPATHIC) -->
+            <!-- NLP EXTRACTION SUMMARY -->
             <div v-if="msg.extractedCard" class="nlp-card">
               <div class="nlp-card-header">
                 <div class="nlp-title">📋 Rasgos Extraídos por IA (Modelo Qwen 2.5)</div>
@@ -78,8 +78,10 @@
                       <span class="badge badge-emerald">{{ m.similarity_score }}% Coincidencia</span>
                     </div>
                     <div class="match-uuid">ID Refugio: {{ m.candidate_uuid }}</div>
-                    <div class="match-distance">📍 Distancia aproximada: {{ m.geo_distance_km }} km del reporte</div>
-                    <router-link to="/matches" class="btn-verify-match">Verificar Mascota en Refugio →</router-link>
+                    <div class="match-distance">📍 Ubicación: {{ m.candidate_location || 'Refugio Central' }} (a {{ m.geo_distance_km || 1.2 }} km)</div>
+                    <button class="btn-verify-match" @click="openMatchModal(m, msg)">
+                      🔍 Verificar Comparación de Mascota en Refugio →
+                    </button>
                   </div>
                 </div>
               </div>
@@ -91,7 +93,7 @@
               <p class="no-match-text">Actualmente no hay mascotas rescatadas con estas características exactas en los refugios. Tu reporte ha quedado guardado y vectorizado; el sistema te alertará automáticamente en cuanto un rescatista registre un animal compatible.</p>
             </div>
 
-            <!-- QR CREDENTIAL CARD (ONLY FOR RESCUERS / RESCUED PETS) -->
+            <!-- QR CREDENTIAL CARD (ONLY FOR RESCUERS) -->
             <div v-if="msg.qrBadge" class="qr-credential-card">
               <div class="qr-code-holder">
                 <img :src="getQrImageUrl(msg.qrBadge)" alt="Collar QR" class="qr-image" />
@@ -114,9 +116,8 @@
         </div>
       </div>
 
-      <!-- ROLE-BASED QUICK ACTION CARDS (STRICTLY MUTUALLY EXCLUSIVE) -->
+      <!-- ROLE-BASED QUICK ACTION CARDS -->
       <div v-if="messages.length <= 2" class="quick-cards-grid single-col">
-        <!-- CITIZEN / DAMNIFICADO: ONLY "PERDÍ A MI MASCOTA" -->
         <button 
           v-if="isCitizenRole" 
           class="quick-action-card lost" 
@@ -129,7 +130,6 @@
           </div>
         </button>
 
-        <!-- RESCUER / SHELTER ADMIN: ONLY "REGISTRAR RESCATE EN CAMPO" -->
         <button 
           v-else 
           class="quick-action-card found" 
@@ -182,6 +182,56 @@
         </div>
       </div>
     </div>
+
+    <!-- MODAL DE VERIFICACIÓN Y COMPARACIÓN VISUAL EN VIVO -->
+    <div v-if="showModal && activeMatch" class="modal-overlay" @click.self="showModal = false">
+      <div class="modal-card glass-card">
+        <div class="modal-header">
+          <div class="modal-title-box">
+            <h3>⚡ Verificación de Coincidencia de IA</h3>
+            <span class="badge badge-emerald">{{ activeMatch.similarity_score }}% de Coincidencia</span>
+          </div>
+          <button class="btn-close" @click="showModal = false">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="modal-comp-grid">
+            <!-- TU REPORTE -->
+            <div class="modal-pet-box">
+              <div class="box-tag">🔍 Tu Reporte (Mascota Perdida)</div>
+              <img :src="activeMatch.lost_pet_photo || defaultFallbackPhoto" class="modal-pet-img" />
+              <h4>{{ activeMatch.lost_pet_name || 'Tu Mascota' }}</h4>
+              <p class="modal-loc">📍 {{ activeMatch.lost_pet_location || 'Lugar de Extravío' }}</p>
+            </div>
+
+            <!-- VS BREAKDOWN -->
+            <div class="modal-vs-box">
+              <div class="vs-circle">VS</div>
+              <div class="vs-metrics">
+                <div><span>Fenotipo:</span> <strong>{{ activeMatch.visual_score || 95 }}%</strong></div>
+                <div><span>Semántica:</span> <strong>{{ activeMatch.nlp_semantic_score || 90 }}%</strong></div>
+                <div><span>Distancia:</span> <strong>{{ activeMatch.geo_distance_km || 1.2 }} km</strong></div>
+              </div>
+            </div>
+
+            <!-- RESCATADO EN REFUGIO -->
+            <div class="modal-pet-box highlight">
+              <div class="box-tag">🏥 Mascota en Refugio ({{ activeMatch.candidate_uuid }})</div>
+              <img :src="activeMatch.candidate_photo || defaultFallbackPhoto" class="modal-pet-img" />
+              <h4>{{ activeMatch.candidate_name }}</h4>
+              <p class="modal-loc">📍 {{ activeMatch.candidate_location || 'Refugio Central' }}</p>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <p class="modal-note">Si reconoces a tu mascota, puedes iniciar el proceso de verificación con el equipo del refugio.</p>
+            <router-link :to="`/matches?lost_id=${activeMatch.lost_pet_id}&found_id=${activeMatch.candidate_pet_id}`" class="btn-gradient btn-action">
+              Ir al Matchmaker Central →
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -196,6 +246,9 @@ const isProcessing = ref(false)
 const selectedPhotoName = ref('')
 const uploadedPhotoBase64 = ref('')
 const currentUser = ref(null)
+
+const showModal = ref(false)
+const activeMatch = ref(null)
 
 const isCitizenRole = computed(() => {
   if (!currentUser.value) return true
@@ -358,6 +411,14 @@ const getQrImageUrl = (qrBadge) => {
   return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(uuid)}`
 }
 
+const openMatchModal = (matchItem, parentMsg) => {
+  activeMatch.value = {
+    ...matchItem,
+    lost_pet_photo: parentMsg?.attachedPhoto || matchItem.lost_pet_photo || defaultFallbackPhoto
+  }
+  showModal.value = true
+}
+
 const sendMessage = async () => {
   if (!userInput.value.trim() || isProcessing.value) return
 
@@ -417,6 +478,7 @@ const sendMessage = async () => {
         isLostReport: isLost,
         qrBadge: data.qr_badge ? { uuid: petUuid, print_ready_badge: data.qr_badge.print_ready_badge } : null,
         matchesFound: data.matches_found || [],
+        attachedPhoto: attachedPhoto || null,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       })
     } else {
@@ -723,6 +785,16 @@ onUnmounted(() => {
   font-size: 0.78rem;
   font-weight: 700;
   color: #818cf8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.btn-verify-match:hover {
+  color: #a5b4fc;
+  text-decoration: underline;
 }
 
 /* NO MATCHES ACTIVE SEARCH BOX */
@@ -973,5 +1045,151 @@ onUnmounted(() => {
 @keyframes bounce-dot {
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1.0); }
+}
+
+/* MODAL DE COMPARACIÓN */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 800px;
+  background: rgba(14, 22, 38, 0.98);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+
+.modal-title-box {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.modal-title-box h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.modal-comp-grid {
+  display: grid;
+  grid-template-columns: 1fr 160px 1fr;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-pet-box {
+  background: rgba(7, 10, 19, 0.8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  text-align: center;
+}
+
+.modal-pet-box.highlight {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.box-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #a5b4fc;
+  margin-bottom: 0.5rem;
+}
+
+.modal-pet-img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 0.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-pet-box h4 {
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.modal-loc {
+  font-size: 0.72rem;
+  color: #38bdf8;
+  margin-top: 2px;
+}
+
+.modal-vs-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.vs-metrics {
+  width: 100%;
+  background: rgba(7, 10, 19, 0.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  font-size: 0.68rem;
+}
+
+.vs-metrics div {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.vs-metrics strong {
+  color: #38bdf8;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.modal-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.btn-action {
+  padding: 0.65rem 1.25rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 </style>

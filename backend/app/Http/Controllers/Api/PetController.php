@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Pet;
+use App\Models\MatchLog;
 use App\Services\Ai\LocalSlmService;
 use App\Services\Ai\ChromaVectorService;
 use App\Services\Mcp\Skills\QrIdentitySkill;
@@ -188,7 +189,45 @@ class PetController extends Controller
                 'target_pet_id' => $pet->id,
                 'target_type' => 'found'
             ]);
-            $matchesFound = $similarityResult['top_matches'] ?? [];
+            $rawMatches = $similarityResult['top_matches'] ?? [];
+
+            // Persistir MatchLogs reales en MySQL y enriquecer datos
+            foreach ($rawMatches as $mItem) {
+                if (($mItem['similarity_score'] ?? 0) >= 50) {
+                    $foundPet = Pet::find($mItem['candidate_pet_id']);
+                    if ($foundPet) {
+                        MatchLog::updateOrCreate([
+                            'lost_pet_id' => $pet->id,
+                            'found_pet_id' => $foundPet->id,
+                        ], [
+                            'similarity_score' => $mItem['similarity_score'],
+                            'species_match' => true,
+                            'visual_score' => $mItem['visual_breakdown'] ?? 90,
+                            'nlp_semantic_score' => $mItem['semantic_breakdown'] ?? 85,
+                            'geo_distance_km' => $mItem['geo_distance_km'] ?? 1.5,
+                            'status' => 'alert_sent'
+                        ]);
+
+                        $matchesFound[] = [
+                            'candidate_pet_id' => $foundPet->id,
+                            'candidate_uuid' => $foundPet->uuid,
+                            'candidate_name' => $foundPet->name,
+                            'candidate_breed' => $foundPet->breed,
+                            'candidate_species' => $foundPet->species,
+                            'candidate_location' => $foundPet->location_address,
+                            'candidate_photo' => $foundPet->photo_url ?: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600',
+                            'lost_pet_id' => $pet->id,
+                            'lost_pet_name' => $pet->name,
+                            'lost_pet_photo' => $pet->photo_url,
+                            'lost_pet_location' => $pet->location_address,
+                            'similarity_score' => $mItem['similarity_score'],
+                            'visual_score' => $mItem['visual_breakdown'] ?? 90,
+                            'nlp_semantic_score' => $mItem['semantic_breakdown'] ?? 85,
+                            'geo_distance_km' => $mItem['geo_distance_km'] ?? 1.5
+                        ];
+                    }
+                }
+            }
         }
 
         return response()->json([

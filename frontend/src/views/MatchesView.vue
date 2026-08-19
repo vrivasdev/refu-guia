@@ -15,8 +15,8 @@
     </div>
 
     <!-- MATCHES LIST -->
-    <div class="match-list" v-if="matches && matches.length > 0">
-      <div v-for="m in matches" :key="m.id" class="match-card glass-card">
+    <div class="match-list" v-if="filteredMatches && filteredMatches.length > 0">
+      <div v-for="m in filteredMatches" :key="m.id" class="match-card glass-card">
         <!-- HEADER METRICS -->
         <div class="match-card-top">
           <div class="match-percentage">
@@ -40,7 +40,7 @@
           <div class="pet-side lost">
             <div class="side-tag">🔍 Mascota Extraviada (Reporte Familiar)</div>
             <img :src="m.lost_pet?.photo_url || defaultDogPhoto" class="comp-img" />
-            <h4>{{ m.lost_pet?.name || 'Toby' }}</h4>
+            <h4>{{ m.lost_pet?.name || 'Mascota Perdida' }}</h4>
             <p class="pet-sub-info">{{ m.lost_pet?.species === 'canine' ? '🐶 Canino' : '🐱 Felino' }} • {{ m.lost_pet?.breed }}</p>
             <p class="loc-text">📍 {{ m.lost_pet?.location_address || 'Caracas' }}</p>
           </div>
@@ -58,7 +58,7 @@
               </div>
               <div class="breakdown-item">
                 <span>Distancia Geoespacial:</span>
-                <strong>{{ m.geo_distance_km || 1.8 }} km</strong>
+                <strong>{{ m.geo_distance_km || 1.2 }} km</strong>
               </div>
             </div>
             <div class="vs-circle">VS</div>
@@ -88,7 +88,7 @@
         </div>
         <div class="human-actions-bar resolved" v-else>
           <p class="resolved-note">
-            {{ m.status === 'confirmed_by_human' ? '🎉 Reencuentro confirmado formalmente y registrado en blockchain/auditoría.' : '⚠️ Match descartado tras revisión de rasgos.' }}
+            {{ m.status === 'confirmed_by_human' ? '🎉 Reencuentro confirmado formalmente y registrado en auditoría.' : '⚠️ Match descartado tras revisión de rasgos.' }}
           </p>
         </div>
       </div>
@@ -97,15 +97,17 @@
     <!-- EMPTY STATE -->
     <div v-else class="empty-matches glass-card">
       <div class="empty-icon">⚡</div>
-      <h3>No hay alertas de coincidencia pendientes</h3>
-      <p>El Agente Emparejador evalúa continuamente la distancia vectorial en ChromaDB en cada nuevo reporte ciudadano.</p>
+      <h3>No hay alertas de coincidencia registradas</h3>
+      <p>Cuando un ciudadano damnificado reporta una mascota perdida en el chat, el Agente Matchmaker evalúa la distancia vectorial en ChromaDB y genera la comparación automática aquí.</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const defaultDogPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&auto=format&fit=crop&q=80'
 const matches = ref([])
 
@@ -118,38 +120,24 @@ const formatMatchStatus = (status) => {
   }
 }
 
+const filteredMatches = computed(() => {
+  const lostId = route.query.lost_id ? parseInt(route.query.lost_id) : null
+  const foundId = route.query.found_id ? parseInt(route.query.found_id) : null
+
+  if (lostId && foundId) {
+    const specific = matches.value.filter(m => m.lost_pet_id === lostId && m.found_pet_id === foundId)
+    if (specific.length > 0) return specific
+  }
+
+  return matches.value
+})
+
 const fetchMatches = async () => {
   try {
     const res = await fetch('http://localhost:8000/api/matches')
     const data = await res.json()
     if (data.success && data.data.length > 0) {
       matches.value = data.data
-    } else {
-      matches.value = [
-        {
-          id: 1,
-          similarity_score: 91.5,
-          visual_score: 95.0,
-          nlp_semantic_score: 90.0,
-          geo_distance_km: 1.8,
-          status: 'alert_sent',
-          lost_pet: {
-            name: 'Toby (Familia Fernández)',
-            species: 'canine',
-            breed: 'Mestizo de Campaña',
-            location_address: 'Caricuao, Caracas',
-            photo_url: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400'
-          },
-          found_pet: {
-            uuid: 'RG-2026-000512',
-            name: 'Rescatado Toby (Collar QR)',
-            species: 'canine',
-            breed: 'Mestizo de Campaña',
-            location_address: 'Refugio Caricuao',
-            photo_url: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=400'
-          }
-        }
-      ]
     }
   } catch (e) {
     console.log('Error fetching matches:', e)
