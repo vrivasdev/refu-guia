@@ -26,6 +26,18 @@ class ChromaVectorService
         }
     }
 
+    public function indexPetDocument(int $petId, string $text, array $metadata = []): bool
+    {
+        // Generar vector simple o embedding sintético normalizado
+        $vector = array_fill(0, 128, 0.1);
+        $hash = md5($text);
+        for ($i = 0; $i < min(32, strlen($hash)); $i++) {
+            $vector[$i] = (ord($hash[$i]) - 97) / 25.0;
+        }
+
+        return $this->storeEmbedding('refuguia_pets', (string)$petId, $vector, $metadata);
+    }
+
     public function storeEmbedding(string $collectionName, string $id, array $vector, array $metadata = []): bool
     {
         if (!$this->isAvailable()) {
