@@ -29,9 +29,6 @@ class McpToolRegistry
         ];
     }
 
-    /**
-     * Parsear archivo Markdown con Frontmatter YAML y cuerpo Markdown
-     */
     protected function parseMarkdownSkillFile(string $filePath): ?array
     {
         if (!File::exists($filePath)) {
@@ -45,10 +42,8 @@ class McpToolRegistry
             $frontmatterRaw = $matches[1];
             $markdownBody = trim($matches[2]);
 
-            // Parsear campos clave de frontmatter
             $meta = [];
             $lines = explode("\n", $frontmatterRaw);
-            $currentKey = null;
 
             foreach ($lines as $line) {
                 $line = trim($line);
@@ -102,42 +97,39 @@ class McpToolRegistry
                     'type' => 'object',
                     'required' => ['raw_text'],
                     'properties' => [
-                        'raw_text' => [
-                            'type' => 'string',
-                            'description' => 'Texto libre o transcripción del ciudadano reportando una mascota.'
-                        ]
+                        'raw_text' => ['type' => 'string', 'description' => 'Texto libre del reporte.']
                     ]
                 ],
                 'skill_calcular_similitud_vectorial' => [
                     'type' => 'object',
                     'required' => ['lost_pet_id', 'found_pet_id'],
                     'properties' => [
-                        'lost_pet_id' => ['type' => 'integer', 'description' => 'ID de la mascota reportada como perdida por la familia.'],
-                        'found_pet_id' => ['type' => 'integer', 'description' => 'ID de la mascota rescatada en refugio.']
+                        'lost_pet_id' => ['type' => 'integer', 'description' => 'ID mascota perdida.'],
+                        'found_pet_id' => ['type' => 'integer', 'description' => 'ID mascota encontrada.']
                     ]
                 ],
                 'skill_generar_identidad_qr' => [
                     'type' => 'object',
                     'required' => ['pet_id'],
                     'properties' => [
-                        'pet_id' => ['type' => 'integer', 'description' => 'Identificador interno de la mascota en el sistema.']
+                        'pet_id' => ['type' => 'integer', 'description' => 'ID mascota.']
                     ]
                 ],
                 'skill_verificar_periodo_gracia' => [
                     'type' => 'object',
                     'required' => ['pet_id'],
                     'properties' => [
-                        'pet_id' => ['type' => 'integer', 'description' => 'ID de la mascota rescatada en refugio.']
+                        'pet_id' => ['type' => 'integer', 'description' => 'ID mascota.']
                     ]
                 ],
                 'skill_evaluar_compatibilidad_adopcion' => [
                     'type' => 'object',
                     'required' => ['pet_id', 'monthly_income_usd', 'housing_type', 'hours_dedicated_daily'],
                     'properties' => [
-                        'pet_id' => ['type' => 'integer', 'description' => 'ID de la mascota'],
-                        'monthly_income_usd' => ['type' => 'number', 'description' => 'Ingreso familiar disponible para la mascota.'],
-                        'housing_type' => ['type' => 'string', 'description' => 'Tipo de inmueble (casa con patio, apartamento, etc).'],
-                        'hours_dedicated_daily' => ['type' => 'integer', 'description' => 'Horas de compañía y cuidado diario.']
+                        'pet_id' => ['type' => 'integer', 'description' => 'ID mascota'],
+                        'monthly_income_usd' => ['type' => 'number', 'description' => 'Ingreso mensual.'],
+                        'housing_type' => ['type' => 'string', 'description' => 'Tipo vivienda.'],
+                        'hours_dedicated_daily' => ['type' => 'integer', 'description' => 'Horas cuidado.']
                     ]
                 ],
                 default => [
@@ -156,6 +148,7 @@ class McpToolRegistry
                 'timeout_ms' => $parsedMd['timeout_ms'] ?? 3000,
                 'parameters' => $parameters,
                 'definition_source' => "storage/app/skills/{$name}.md",
+                'has_markdown_doc' => !empty($parsedMd['raw_content']),
                 'markdown_body' => $parsedMd['markdown_body'] ?? '',
                 'raw_markdown' => $parsedMd['raw_content'] ?? ''
             ];
