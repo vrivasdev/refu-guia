@@ -112,7 +112,7 @@
 
           <!-- AUDITABLE TREATMENT FORM -->
           <div class="treatment-section">
-            <h4>💊 Administrar Tratamiento / Fármaco Crítico</h4>
+            <div class='section-audit-header'><h4>🩺 Módulo de Auditoría Clínica &amp; Fármacos Críticos</h4><span class='badge badge-cyan'>Inmutabilidad SHA-256</span></div>
             <div class="sec-alert">
               ⚠️ <strong>Regla de Ciberseguridad / Negocio:</strong> Se requiere escaneo previo obligatorio del código QR físico para desbloquear la aplicación de medicamentos en el sistema.
             </div>
@@ -285,6 +285,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { showSuccess, showError, showWarning } from '../utils/alerts'
 
 const defaultPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
 
@@ -451,6 +452,7 @@ const savePetEdit = async () => {
     const data = await res.json()
     if (data.success) {
       editSuccessMsg.value = '¡Ficha y foto de la mascota actualizadas exitosamente!'
+      showSuccess('¡Ficha Actualizada!', 'Los datos y la foto han sido actualizados y reindexados en ChromaDB.')
       
       // Actualización reactiva instantánea
       if (selectedPet.value && selectedPet.value.id === editForm.value.id) {
@@ -648,6 +650,7 @@ const applyTreatment = async () => {
     const data = await res.json()
     if (data.success) {
       medSuccessMsg.value = '¡Fármaco registrado con éxito y hash criptográfico generado!'
+      showSuccess('¡Fármaco Registrado y Auditado!', `Se administró <strong>${submittedDrug}</strong>. Se ha generado y firmado el hash criptográfico SHA-256.`)
       
       if (!selectedPet.value.clinical_records) {
         selectedPet.value.clinical_records = []
