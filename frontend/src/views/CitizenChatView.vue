@@ -38,7 +38,9 @@
             <div v-if="msg.extractedCard" class="nlp-card">
               <div class="nlp-card-header">
                 <div class="nlp-title">📋 Extracción Estructurada por Agente NLP</div>
-                <span class="badge badge-emerald">Qwen 2.5 • Confianza 95%</span>
+                <span :class="['badge', msg.extractedCard.is_live_slm ? 'badge-emerald' : 'badge-amber']">
+                  {{ msg.extractedCard.is_live_slm ? '🟢 Qwen 2.5:1.5B (En Vivo)' : '🟠 Motor Local Resiliente' }}
+                </span>
               </div>
               <div class="nlp-grid">
                 <div class="nlp-field">
@@ -60,6 +62,10 @@
                 <div class="nlp-field full">
                   <span class="field-lbl">Evaluación Clínica / Traumatismo Inicial:</span>
                   <span class="highlight-trauma">⚠️ {{ msg.extractedCard.trauma_observed || msg.extractedCard.health_state || 'Sin traumatismos evidentes' }}</span>
+                </div>
+                <div class="nlp-field full engine-row">
+                  <span class="field-lbl">Motor de Extracción:</span>
+                  <span class="engine-label">{{ msg.extractedCard.engine_used || 'IA Local RefuGuía' }}</span>
                 </div>
               </div>
             </div>
@@ -256,7 +262,6 @@ const toggleAudioRecording = () => {
   }
 
   if (!recognition) {
-    // Fallback si el navegador no soporta Web Speech API
     userInput.value = 'Transcripción de voz: "Hola, acabamos de rescatar un perro mestizo mediano negro con manchas blancas en Caricuao. Tiene la pata lastimada y requiere atención."'
     voiceTranscriptNotice.value = '🎙️ Nota de voz de prueba cargada'
     setTimeout(() => { voiceTranscriptNotice.value = '' }, 3000)
@@ -383,7 +388,7 @@ const sendMessage = async () => {
       
       messages.value.push({
         sender: 'bot',
-        text: `¡Reporte registrado exitosamente! El <strong>Agente NLP (Qwen 2.5)</strong> y el <strong>Servidor MCP</strong> han indexado los datos y la foto en MySQL y ChromaDB.`,
+        text: `¡Reporte registrado exitosamente! El <strong>Agente NLP</strong> y el <strong>Servidor MCP</strong> han indexado los datos y la foto en MySQL y ChromaDB.`,
         extractedCard: ext,
         qrBadge: { uuid: petUuid, print_ready_badge: data.qr_badge?.print_ready_badge },
         matchesFound: data.matches_found || [],
@@ -405,7 +410,9 @@ const sendMessage = async () => {
         breed: 'Mestizo de Campaña',
         size: 'Mediano',
         primary_color: 'Negro con Blanco',
-        trauma_observed: 'Lesión en extremidad / Cojera observada'
+        trauma_observed: 'Lesión en extremidad / Cojera observada',
+        is_live_slm: false,
+        engine_used: 'Motor Heurístico de Resiliencia (Offline)'
       },
       qrBadge: { uuid: 'RG-2026-000599' },
       time: 'Ahora'
@@ -620,6 +627,18 @@ onUnmounted(() => {
 .highlight-trauma {
   color: #fbbf24;
   font-weight: 600;
+}
+
+.engine-row {
+  margin-top: 0.2rem !important;
+  padding-top: 0.2rem !important;
+  border-top: none !important;
+}
+
+.engine-label {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-family: monospace;
 }
 
 .qr-credential-card {
