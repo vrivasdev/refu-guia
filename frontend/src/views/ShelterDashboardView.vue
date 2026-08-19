@@ -5,9 +5,9 @@
       <div class="kpi-box glass-card">
         <div class="kpi-icon-wrap bg-cyan">🐾</div>
         <div class="kpi-details">
-          <span class="kpi-lbl">Mascotas Ingresadas Hoy</span>
+          <span class="kpi-lbl">Mascotas en Inventario</span>
           <span class="kpi-number">{{ pets.length || 45 }}</span>
-          <span class="badge badge-emerald">↑ 18% vs ayer</span>
+          <span class="badge badge-emerald">En Sistema Post-Sismo</span>
         </div>
       </div>
 
@@ -61,11 +61,11 @@
             <img :src="p.photo_url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=200'" class="pet-avatar" />
             <div class="pet-card-info">
               <div class="pet-card-top">
-                <span class="pet-name">{{ p.name || 'Sin Nombre' }}</span>
+                <span class="pet-name">{{ getCleanPetName(p) }}</span>
                 <span :class="['badge', p.status === 'reunified' ? 'badge-emerald' : 'badge-primary']">{{ p.status }}</span>
               </div>
               <div class="pet-uuid">{{ p.uuid }}</div>
-              <div class="pet-meta">{{ p.species }} • {{ p.breed }} • {{ p.primary_color }}</div>
+              <div class="pet-meta">{{ p.species === 'canine' ? '🐶 Canino' : '🐱 Felino' }} • {{ p.breed || 'Mestizo' }} • {{ p.primary_color }}</div>
             </div>
           </div>
         </div>
@@ -78,16 +78,18 @@
             <h3>📋 Expediente Clínico Digital (ID: {{ selectedPet.uuid }})</h3>
             <span class="sub-text">Trazabilidad inmutable e impresión de collares</span>
           </div>
-          <button class="btn-gradient" @click="printQrBadge(selectedPet)">🖨️ Imprimir Collar QR</button>
+          <button class="btn-gradient btn-print-badge" @click="printQrBadge(selectedPet)">
+            <span>🖨️ Imprimir Collar QR</span>
+          </button>
         </div>
 
         <div class="dossier-body">
           <!-- PET PROFILE SUMMARY -->
           <div class="profile-hero">
-            <img :src="selectedPet.photo_url" class="hero-avatar" />
+            <img :src="selectedPet.photo_url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600'" class="hero-avatar" />
             <div class="hero-info">
-              <h2>{{ selectedPet.name }}</h2>
-              <p class="hero-sub">📍 <strong>Ubicación de Rescate:</strong> {{ selectedPet.location_address }}</p>
+              <h2>{{ getCleanPetName(selectedPet) }}</h2>
+              <p class="hero-sub">📍 <strong>Ubicación de Rescate:</strong> {{ selectedPet.location_address || 'Caracas / Zona del Sismo' }}</p>
               <p class="hero-sub">📅 <strong>Fecha Ingreso:</strong> {{ formatDate(selectedPet.rescue_date) }}</p>
               <div class="hero-tags">
                 <span class="badge badge-amber">⏳ 15 Días de Gracia: En Búsqueda Activa</span>
@@ -169,6 +171,16 @@ const vetName = ref('Dra. Carmen López')
 const medSuccessMsg = ref('')
 const isSubmittingDrug = ref(false)
 
+const getCleanPetName = (p) => {
+  if (!p) return 'Mascota Rescatada'
+  if (p.name && p.name !== 'string' && p.name !== 'not specified') {
+    return p.name
+  }
+  const spec = p.species === 'feline' ? 'Gatito' : 'Canino'
+  const breed = (p.breed && p.breed !== 'string') ? p.breed : 'Mestizo'
+  return `${spec} ${breed} (${p.uuid})`
+}
+
 const countActiveTreatments = computed(() => {
   let count = 0
   pets.value.forEach(p => {
@@ -207,22 +219,149 @@ const formatDate = (d) => {
   return isNaN(dateObj.getTime()) ? new Date().toLocaleDateString('es-VE') : dateObj.toLocaleDateString('es-VE')
 }
 
+// ROBUST PRINTING FUNCTION WITH ONLOAD LISTENER (NO BLANK IMAGES)
 const printQrBadge = (pet) => {
-  const printUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({ uuid: pet.uuid, id: pet.id, system: 'RefuGuia' }))}`
-  const win = window.open('', '_blank')
-  win.document.write(`
+  const qrDataPayload = encodeURIComponent(JSON.stringify({
+    uuid: pet.uuid,
+    id: pet.id,
+    system: 'RefuGuia-Emergency',
+    species: pet.species
+  }))
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${qrDataPayload}`
+  const petDisplayName = getCleanPetName(pet)
+
+  const printWin = window.open('', '_blank', 'width=700,height=800')
+  if (!printWin) {
+    alert('Por favor habilita las ventanas emergentes (popups) en tu navegador para imprimir el collar QR.')
+    return
+  }
+
+  printWin.document.write(`
+    <!DOCTYPE html>
     <html>
-      <head><title>Impresión Collar QR - ${pet.uuid}</title></head>
-      <body style="font-family:sans-serif; text-align:center; padding:30px;">
-        <h2>REFUGIO TEMPORAL POST-SISMO</h2>
-        <p>Identificador de Emergencia: <strong>${pet.uuid}</strong></p>
-        <p>Mascota: ${pet.name || 'Provisorio'} (${pet.species})</p>
-        <img src="${printUrl}" style="width:220px;height:220px;border:2px solid #000;padding:10px;" />
-        <p style="font-size:12px;margin-top:15px;">Escaneo obligatorio para trazabilidad y tratamientos.</p>
+      <head>
+        <meta charset="utf-8">
+        <title>Collar QR Oficial - ${pet.uuid}</title>
+        <style>
+          @page { size: auto; margin: 15mm; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #0f172a;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+          }
+          .badge-container {
+            width: 380px;
+            border: 3px dashed #6366f1;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            background: #f8fafc;
+          }
+          .header-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #4338ca;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+          .header-sub {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 16px;
+          }
+          .qr-box {
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 12px;
+            display: inline-block;
+            margin-bottom: 12px;
+          }
+          .qr-box img {
+            width: 220px;
+            height: 220px;
+            display: block;
+          }
+          .uuid-pill {
+            background: #e0e7ff;
+            color: #3730a3;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: 800;
+            padding: 6px 14px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 10px;
+            letter-spacing: 0.05em;
+          }
+          .pet-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+          }
+          .pet-details {
+            font-size: 12px;
+            color: #475569;
+            margin-bottom: 14px;
+          }
+          .footer-note {
+            font-size: 10px;
+            color: #94a3b8;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            line-height: 1.4;
+          }
+          .cut-line {
+            font-size: 10px;
+            color: #6366f1;
+            margin-top: 10px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="badge-container">
+          <div class="header-title">🐾 RefuGuía Post-Sismo</div>
+          <div class="header-sub">Identificador Oficial de Campaña / Refugio</div>
+
+          <div class="uuid-pill">${pet.uuid}</div>
+
+          <div class="qr-box">
+            <img id="qrImg" src="${qrUrl}" alt="QR Code" />
+          </div>
+
+          <div class="pet-name">${petDisplayName}</div>
+          <div class="pet-details">${pet.species === 'canine' ? '🐶 Canino' : '🐱 Felino'} • ${pet.breed || 'Mestizo'} • ${pet.primary_color || 'Negro'}</div>
+
+          <div class="footer-note">
+            ⚠️ <strong>Escaneo Obligatorio:</strong> Requerido para verificación de tutor legal y administración de medicamentos en el sistema.
+          </div>
+          <div class="cut-line">✂️ Recortar e insertar en funda impermeable de collar</div>
+        </div>
+
+        <script>
+          const img = document.getElementById('qrImg');
+          if (img.complete) {
+            setTimeout(() => { window.print(); }, 200);
+          } else {
+            img.onload = () => {
+              setTimeout(() => { window.print(); }, 200);
+            };
+            img.onerror = () => {
+              alert('Error al cargar la imagen QR. Se procederá a imprimir.');
+              window.print();
+            };
+          }
+        <\/script>
       </body>
     </html>
   `)
-  win.print()
+  printWin.document.close()
 }
 
 const applyTreatment = async () => {
@@ -248,7 +387,6 @@ const applyTreatment = async () => {
     if (data.success) {
       medSuccessMsg.value = '¡Fármaco registrado con éxito y hash criptográfico generado!'
       
-      // Actualización reactiva instantánea en la UI
       if (!selectedPet.value.clinical_records) {
         selectedPet.value.clinical_records = []
       }
@@ -263,14 +401,11 @@ const applyTreatment = async () => {
         created_at: new Date().toISOString()
       }
 
-      // Insertar al inicio de la lista
       selectedPet.value.clinical_records.unshift(newRecord)
 
-      // Limpiar formulario
       drugName.value = ''
       qrScanConfirmed.value = false
 
-      // Sincronizar en segundo plano con la base de datos
       setTimeout(fetchPets, 500)
     } else {
       medSuccessMsg.value = 'Error: ' + (data.error || 'No se pudo registrar el tratamiento.')
@@ -385,6 +520,12 @@ onMounted(() => {
   cursor: pointer;
 }
 
+.btn-print-badge {
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .pets-scroll {
   flex: 1;
   overflow-y: auto;
@@ -433,7 +574,8 @@ onMounted(() => {
 
 .pet-name {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
+  color: #ffffff;
 }
 
 .pet-uuid {
@@ -476,7 +618,7 @@ onMounted(() => {
 }
 
 .hero-info h2 {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 800;
   margin-bottom: 0.25rem;
 }
