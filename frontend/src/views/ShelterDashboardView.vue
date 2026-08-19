@@ -1,118 +1,143 @@
 <template>
-  <div class="shelter-dashboard">
-    <!-- TOP KPIS -->
-    <div class="kpi-grid">
-      <div class="kpi-card glass-panel">
-        <div class="kpi-title">Mascotas Ingresadas Hoy</div>
-        <div class="kpi-val">45</div>
-        <div class="kpi-delta positive">↑ 18% vs ayer</div>
+  <div class="shelter-page">
+    <!-- KPIS ROW -->
+    <div class="kpis-container">
+      <div class="kpi-box glass-card">
+        <div class="kpi-icon-wrap bg-cyan">🐾</div>
+        <div class="kpi-details">
+          <span class="kpi-lbl">Mascotas Ingresadas Hoy</span>
+          <span class="kpi-number">45</span>
+          <span class="badge badge-emerald">↑ 18% vs ayer</span>
+        </div>
       </div>
-      <div class="kpi-card glass-panel">
-        <div class="kpi-title">Matches Exitosos</div>
-        <div class="kpi-val highlight">12</div>
-        <div class="kpi-delta positive">↑ 25% vs ayer</div>
+
+      <div class="kpi-box glass-card">
+        <div class="kpi-icon-wrap bg-primary">⚡</div>
+        <div class="kpi-details">
+          <span class="kpi-lbl">Matches Exitosos (IA)</span>
+          <span class="kpi-number highlight-cyan">12</span>
+          <span class="badge badge-emerald">↑ 25% vs ayer</span>
+        </div>
       </div>
-      <div class="kpi-card glass-panel">
-        <div class="kpi-title">En Tratamiento Activo</div>
-        <div class="kpi-val">28</div>
-        <div class="kpi-delta neutral">— 0% vs ayer</div>
+
+      <div class="kpi-box glass-card">
+        <div class="kpi-icon-wrap bg-amber">💊</div>
+        <div class="kpi-details">
+          <span class="kpi-lbl">En Tratamiento Activo</span>
+          <span class="kpi-number">28</span>
+          <span class="badge badge-cyan">— 0% vs ayer</span>
+        </div>
       </div>
-      <div class="kpi-card glass-panel">
-        <div class="kpi-title">Alertas Críticas</div>
-        <div class="kpi-val alert">3</div>
-        <div class="kpi-delta negative">↑ 3 vs ayer</div>
+
+      <div class="kpi-box glass-card">
+        <div class="kpi-icon-wrap bg-rose">🚨</div>
+        <div class="kpi-details">
+          <span class="kpi-lbl">Alertas Críticas</span>
+          <span class="kpi-number highlight-rose">3</span>
+          <span class="badge badge-rose">↑ 3 vs ayer</span>
+        </div>
       </div>
     </div>
 
     <!-- MAIN TWO COLUMN WORKBENCH -->
-    <div class="workbench-grid">
-      <!-- LEFT: ACTIVE INVENTORY & QR GENERATOR -->
-      <div class="panel-box glass-panel">
-        <div class="panel-header">
-          <h3>🐕 Inventario en Refugio & Credenciales QR</h3>
-          <button class="btn-refresh" @click="fetchPets">🔄 Actualizar</button>
+    <div class="workbench">
+      <!-- LEFT: INVENTORY LIST -->
+      <div class="inventory-col glass-card">
+        <div class="col-head">
+          <div>
+            <h3>🐕 Inventario en Refugio</h3>
+            <span class="sub-text">Mascotas con identificación QR de campaña</span>
+          </div>
+          <button class="btn-tool-subtle" @click="fetchPets">🔄</button>
         </div>
 
-        <div class="pet-list-scroll">
+        <div class="pets-scroll">
           <div 
             v-for="p in pets" 
             :key="p.id" 
-            :class="['pet-item-row', selectedPet?.id === p.id ? 'active-pet' : '']"
+            :class="['pet-card-row', selectedPet?.id === p.id ? 'active-pet' : '']"
             @click="selectPet(p)"
           >
-            <img :src="p.photo_url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=200'" class="pet-thumb" />
-            <div class="pet-summary">
-              <div class="row-top">
+            <img :src="p.photo_url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=200'" class="pet-avatar" />
+            <div class="pet-card-info">
+              <div class="pet-card-top">
                 <span class="pet-name">{{ p.name || 'Sin Nombre' }}</span>
-                <span :class="['badge', p.status === 'reunified' ? 'badge-success' : 'badge-primary']">{{ p.status }}</span>
+                <span :class="['badge', p.status === 'reunified' ? 'badge-emerald' : 'badge-primary']">{{ p.status }}</span>
               </div>
-              <div class="pet-uuid-code">{{ p.uuid }}</div>
-              <div class="pet-details">{{ p.species }} • {{ p.breed }} • {{ p.primary_color }}</div>
+              <div class="pet-uuid">{{ p.uuid }}</div>
+              <div class="pet-meta">{{ p.species }} • {{ p.breed }} • {{ p.primary_color }}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT: CLINICAL FILE & MANDATORY QR SCAN -->
-      <div class="panel-box glass-panel" v-if="selectedPet">
-        <div class="panel-header">
-          <h3>📋 Ficha Clínica Oficial (ID: {{ selectedPet.uuid }})</h3>
-          <button class="btn-print-qr" @click="printQrBadge(selectedPet)">🖨️ Imprimir Collar QR</button>
+      <!-- RIGHT: CLINICAL DOSSIER -->
+      <div class="dossier-col glass-card" v-if="selectedPet">
+        <div class="col-head">
+          <div>
+            <h3>📋 Expediente Clínico Digital (ID: {{ selectedPet.uuid }})</h3>
+            <span class="sub-text">Trazabilidad inmutable e impresión de collares</span>
+          </div>
+          <button class="btn-gradient" @click="printQrBadge(selectedPet)">🖨️ Imprimir Collar QR</button>
         </div>
 
-        <div class="clinical-details">
-          <div class="pet-profile-header">
-            <img :src="selectedPet.photo_url" class="profile-avatar" />
-            <div>
+        <div class="dossier-body">
+          <!-- PET PROFILE SUMMARY -->
+          <div class="profile-hero">
+            <img :src="selectedPet.photo_url" class="hero-avatar" />
+            <div class="hero-info">
               <h2>{{ selectedPet.name }}</h2>
-              <p class="meta-sub">Ubicación: {{ selectedPet.location_address }}</p>
-              <p class="meta-sub">Fecha Rescate: {{ formatDate(selectedPet.rescue_date) }}</p>
-              <div class="grace-badge-bar">
-                <span class="badge badge-warning">⏳ 15 Días de Gracia: En Búsqueda Activa</span>
+              <p class="hero-sub">📍 <strong>Ubicación de Rescate:</strong> {{ selectedPet.location_address }}</p>
+              <p class="hero-sub">📅 <strong>Fecha Ingreso:</strong> {{ formatDate(selectedPet.rescue_date) }}</p>
+              <div class="hero-tags">
+                <span class="badge badge-amber">⏳ 15 Días de Gracia: En Búsqueda Activa</span>
+                <span class="badge badge-cyan">Microchip QR Vinculado</span>
               </div>
             </div>
           </div>
 
           <!-- AUDITABLE TREATMENT FORM -->
-          <div class="treatment-box">
+          <div class="treatment-section">
             <h4>💊 Administrar Tratamiento / Fármaco Crítico</h4>
-            <p class="security-note">⚠️ <strong>Regla de Ciberseguridad / Negocio:</strong> Se requiere escaneo previo obligatorio del QR del collar para desbloquear la aplicación de medicamentos.</p>
+            <div class="sec-alert">
+              ⚠️ <strong>Regla de Ciberseguridad / Negocio:</strong> Se requiere escaneo previo obligatorio del código QR físico para desbloquear la aplicación de medicamentos en el sistema.
+            </div>
 
-            <div class="qr-verify-toggle">
-              <label class="switch-label">
+            <div class="checkbox-qr-wrap">
+              <label class="custom-chk">
                 <input type="checkbox" v-model="qrScanConfirmed" />
                 <span>¿Código QR físico escaneado y verificado en collar?</span>
               </label>
             </div>
 
-            <div class="form-row">
-              <input type="text" v-model="drugName" placeholder="Nombre del fármaco (ej: Antibiótico / Analgésico)" class="input-dark" />
-              <input type="text" v-model="vetName" placeholder="Nombre del Veterinario" class="input-dark" />
-              <button class="btn-apply-med" :disabled="!qrScanConfirmed || !drugName" @click="applyTreatment">
-                Registrar en Historial
+            <div class="treatment-form-grid">
+              <input type="text" v-model="drugName" placeholder="Fármaco (ej: Antibiótico / Cefalexina)" class="input-dark" />
+              <input type="text" v-model="vetName" placeholder="Veterinario a cargo" class="input-dark" />
+              <button class="btn-gradient btn-med" :disabled="!qrScanConfirmed || !drugName" @click="applyTreatment">
+                Registrar Fármaco
               </button>
             </div>
-            <p v-if="!qrScanConfirmed" class="error-text">❌ Debes marcar la confirmación de escaneo de QR para registrar medicación crítica.</p>
-            <p v-if="medSuccessMsg" class="success-text">✅ {{ medSuccessMsg }}</p>
+            <p v-if="!qrScanConfirmed" class="warn-msg">❌ Bloqueo activo: Debes marcar la confirmación de escaneo de QR.</p>
+            <p v-if="medSuccessMsg" class="success-msg">✅ {{ medSuccessMsg }}</p>
           </div>
 
-          <!-- MEDICAL HISTORY TABLE -->
-          <div class="history-section">
+          <!-- CLINICAL TIMELINE -->
+          <div class="timeline-section">
             <h4>Historial Clínico Inmutable (Auditoría SHA-256)</h4>
-            <div v-if="selectedPet.clinical_records && selectedPet.clinical_records.length > 0">
-              <div v-for="rec in selectedPet.clinical_records" :key="rec.id" class="history-item">
-                <div class="hist-header">
+            <div v-if="selectedPet.clinical_records && selectedPet.clinical_records.length > 0" class="records-list">
+              <div v-for="rec in selectedPet.clinical_records" :key="rec.id" class="record-card">
+                <div class="record-top">
                   <span>👨‍⚕️ {{ rec.veterinarian_name }}</span>
-                  <span>{{ formatDate(rec.created_at) }}</span>
+                  <span class="rec-date">{{ formatDate(rec.created_at) }}</span>
                 </div>
-                <div class="hist-body">
+                <div class="record-desc">
                   <p><strong>Observaciones:</strong> {{ rec.trauma_notes }}</p>
                   <p><strong>Medicamento Crítico:</strong> {{ rec.critical_drug_administered || 'Ninguno' }}</p>
-                  <p class="hash-code">Hash: {{ rec.audit_hash || 'sha256-verified-in-db' }}</p>
+                  <div class="hash-tag">Hash Criptográfico: {{ rec.audit_hash || 'sha256-verified-in-db' }}</div>
                 </div>
               </div>
             </div>
-            <p v-else class="text-muted">No hay registros clínicos previos para esta mascota.</p>
+            <p v-else class="empty-note">No hay registros clínicos previos para esta mascota.</p>
           </div>
         </div>
       </div>
@@ -204,121 +229,143 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.shelter-dashboard {
+.shelter-page {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.kpi-grid {
+.kpis-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
 }
 
-.kpi-card {
-  padding: 1.25rem 1.5rem;
+.kpi-box {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
-.kpi-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
+.kpi-icon-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
 }
 
-.kpi-val {
-  font-size: 2.25rem;
-  font-weight: 800;
-  margin: 0.25rem 0;
+.bg-cyan { background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.3); }
+.bg-primary { background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); }
+.bg-amber { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
+.bg-rose { background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); }
+
+.kpi-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.kpi-val.highlight { color: #38bdf8; }
-.kpi-val.alert { color: #f87171; }
-
-.kpi-delta {
+.kpi-lbl {
   font-size: 0.75rem;
+  color: var(--text-muted);
   font-weight: 600;
 }
-.kpi-delta.positive { color: #34d399; }
-.kpi-delta.neutral { color: #94a3b8; }
-.kpi-delta.negative { color: #f87171; }
 
-.workbench-grid {
+.kpi-number {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.highlight-cyan { color: #38bdf8; }
+.highlight-rose { color: #fb7185; }
+
+.workbench {
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: 1.5rem;
 }
 
-.panel-box {
+.inventory-col, .dossier-col {
   padding: 1.5rem;
+  height: 72vh;
   display: flex;
   flex-direction: column;
-  height: 70vh;
+  overflow: hidden;
 }
 
-.panel-header {
+.col-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
+  padding-bottom: 1rem;
   border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
 }
 
-.panel-header h3 {
-  font-size: 1rem;
-  font-weight: 700;
+.col-head h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
 }
 
-.btn-refresh, .btn-print-qr {
-  background: rgba(99, 102, 241, 0.2);
-  color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 600;
+.sub-text {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
-.pet-list-scroll {
+.btn-tool-subtle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+}
+
+.pets-scroll {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  padding-right: 4px;
 }
 
-.pet-item-row {
+.pet-card-row {
   display: flex;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background: rgba(15, 23, 42, 0.6);
+  gap: 0.85rem;
+  padding: 0.85rem;
+  background: rgba(7, 10, 19, 0.6);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.pet-item-row:hover, .pet-item-row.active-pet {
+.pet-card-row:hover, .pet-card-row.active-pet {
   border-color: #6366f1;
   background: rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.15);
 }
 
-.pet-thumb {
+.pet-avatar {
   width: 54px;
   height: 54px;
-  border-radius: 8px;
+  border-radius: 10px;
   object-fit: cover;
 }
 
-.pet-summary {
+.pet-card-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-.row-top {
+.pet-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -326,64 +373,87 @@ onMounted(() => {
 
 .pet-name {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
-.pet-uuid-code {
+.pet-uuid {
   font-family: monospace;
   font-size: 0.75rem;
   color: #38bdf8;
+  font-weight: 600;
 }
 
-.pet-details {
-  font-size: 0.75rem;
+.pet-meta {
+  font-size: 0.72rem;
   color: var(--text-muted);
 }
 
-.clinical-details {
+.dossier-body {
+  flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  padding-right: 4px;
 }
 
-.pet-profile-header {
+.profile-hero {
   display: flex;
   gap: 1.25rem;
   align-items: center;
+  background: rgba(7, 10, 19, 0.5);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: var(--radius-md);
 }
 
-.profile-avatar {
+.hero-avatar {
   width: 90px;
   height: 90px;
-  border-radius: 16px;
+  border-radius: 14px;
   object-fit: cover;
   border: 2px solid #6366f1;
 }
 
-.meta-sub {
+.hero-info h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+}
+
+.hero-sub {
   font-size: 0.8rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
-.treatment-box {
-  background: rgba(15, 23, 42, 0.7);
+.hero-tags {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.treatment-section {
+  background: rgba(7, 10, 19, 0.7);
   border: 1px solid var(--border);
-  padding: 1rem;
-  border-radius: 12px;
+  padding: 1.15rem;
+  border-radius: var(--radius-md);
 }
 
-.security-note {
+.sec-alert {
   font-size: 0.75rem;
   color: #fbbf24;
-  margin: 0.5rem 0;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  margin: 0.6rem 0;
 }
 
-.qr-verify-toggle {
+.checkbox-qr-wrap {
   margin: 0.75rem 0;
 }
 
-.switch-label {
+.custom-chk {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -391,58 +461,61 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.form-row {
-  display: flex;
-  gap: 0.5rem;
+.treatment-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.6rem;
 }
 
 .input-dark {
-  flex: 1;
-  background: #0f172a;
+  background: #070a13;
   border: 1px solid var(--border);
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.85rem;
   color: white;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
 }
 
-.btn-apply-med {
-  background: #10b981;
-  color: white;
-  padding: 0 1rem;
-  border-radius: 8px;
+.btn-med {
+  padding: 0 1.25rem;
+  font-size: 0.85rem;
+}
+
+.warn-msg { color: #fb7185; font-size: 0.75rem; margin-top: 0.4rem; font-weight: 600; }
+.success-msg { color: #34d399; font-size: 0.75rem; margin-top: 0.4rem; font-weight: 700; }
+
+.timeline-section h4 {
+  font-size: 0.95rem;
   font-weight: 700;
-  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
-.btn-apply-med:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
-.error-text { color: #f87171; font-size: 0.75rem; margin-top: 0.4rem; }
-.success-text { color: #34d399; font-size: 0.75rem; margin-top: 0.4rem; font-weight: 700; }
-
-.history-item {
-  background: rgba(15, 23, 42, 0.5);
+.record-card {
+  background: rgba(7, 10, 19, 0.6);
   border: 1px solid var(--border);
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  font-size: 0.82rem;
 }
 
-.hist-header {
+.record-top {
   display: flex;
   justify-content: space-between;
-  color: #818cf8;
+  color: #a5b4fc;
   font-weight: 700;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
-.hash-code {
+.hash-tag {
   font-family: monospace;
-  font-size: 0.65rem;
-  color: var(--text-muted);
+  font-size: 0.68rem;
+  color: #38bdf8;
+  margin-top: 0.35rem;
 }
 </style>
