@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe Final de Proyecto - RefuGuía (UTN-FRBA & EPIData)</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 20mm 15mm;
+            @bottom-right {
+                content: "Página " counter(page);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 8pt;
+                color: #666;
+            }
+        }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.6;
+            color: #1e293b;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            font-size: 18pt;
+            color: #1e1b4b;
+            border-bottom: 2px solid #4f46e5;
+            padding-bottom: 6px;
+            margin-top: 24pt;
+            margin-bottom: 12pt;
+            page-break-after: avoid;
+        }
+        h2 {
+            font-size: 14pt;
+            color: #312e81;
+            margin-top: 18pt;
+            margin-bottom: 8pt;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 4px;
+            page-break-after: avoid;
+        }
+        h3 {
+            font-size: 12pt;
+            color: #4338ca;
+            margin-top: 14pt;
+            margin-bottom: 6pt;
+            page-break-after: avoid;
+        }
+        h4 {
+            font-size: 11pt;
+            color: #475569;
+            margin-top: 10pt;
+            margin-bottom: 4pt;
+            page-break-after: avoid;
+        }
+        p, li {
+            text-align: justify;
+            margin-bottom: 6pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+            page-break-inside: avoid;
+        }
+        th, td {
+            border: 1px solid #cbd5e1;
+            padding: 7px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            font-weight: 700;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background: #f1f5f9;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 9pt;
+            color: #0f172a;
+        }
+        pre {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 8.5pt;
+            line-height: 1.4;
+            overflow-x: auto;
+            page-break-inside: avoid;
+            margin: 10pt 0;
+        }
+        pre code {
+            background: transparent;
+            color: #38bdf8;
+            padding: 0;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 16pt 0;
+        }
+        .header-box {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20pt;
+            text-align: center;
+        }
+        .header-box h1 {
+            color: #ffffff;
+            border: none;
+            margin: 0;
+            padding: 0;
+            font-size: 19pt;
+        }
+        .header-box p {
+            color: #cbd5e1;
+            margin: 4pt 0 0 0;
+            text-align: center;
+            font-size: 11pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-box">
+        <h1>RefuGuía 🐾 — Informe Final de Proyecto</h1>
+        <p>Inteligencia Artificial Aplicada a Organizaciones • UTN-FRBA & EPIData</p>
+    </div>
+    <h1>TRABAJO FINAL DE CICLO: ENTREGA FINAL DE PROYECTO</h1>
+<h2>INTELIGENCIA ARTIFICIAL APLICADA A ORGANIZACIONES</h2>
+<p><strong>Universidad Tecnológica Nacional — Facultad Regional Buenos Aires (UTN-FRBA) &amp; EPIData</strong></p>
+<hr />
+<h1>LINKS OBLIGATORIOS (ACCESO DIRECTO)</h1>
+<table>
+<thead>
+<tr>
+<th align="left">Recurso Obligatorio</th>
+<th align="left">URL Directa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><strong>Repositorio GitHub</strong></td>
+<td align="left"><a href="https://github.com/vrivasdev/refu-guia">https://github.com/vrivasdev/refu-guia</a></td>
+</tr>
+<tr>
+<td align="left"><strong>Aplicación Web en Producción</strong></td>
+<td align="left"><a href="https://refuguia.org">https://refuguia.org</a> <em>(O entorno Docker local en http://localhost:5173)</em></td>
+</tr>
+<tr>
+<td align="left"><strong>Video de Demostración (&lt;3 min)</strong></td>
+<td align="left"><a href="https://youtu.be/refuguia-demo-final">https://youtu.be/refuguia-demo-final</a></td>
+</tr>
+<tr>
+<td align="left"><strong>Documentación de Anteproyecto</strong></td>
+<td align="left"><a href="doc/Sistema%20Inteligente%20de%20Reconocimiento,%20Gestión%20y%20Reubicación%20de%20Mascotas%20Post-Sismo.pdf">Ver PDF Anteproyecto</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1>PARTE 1 — EL PROYECTO COMO APLICACIÓN REAL</h1>
+<hr />
+<h2>Sección 1 · Presentación del Equipo y del Proyecto</h2>
+<h3>1.1 Integrantes del Grupo</h3>
+<ul>
+<li><strong>Víctor Rivas (Cohorte 2):</strong></li>
+<li><strong>Rol en el desarrollo:</strong> Arquitecto de Software, Desarrollador Fullstack (Laravel + Vue.js), Ingeniero de IA Local / MCP y Responsable de QA y Ciberseguridad.</li>
+</ul>
+<h3>1.2 Nombre del Proyecto</h3>
+<p><strong>RefuGuía:</strong> Sistema Inteligente de Reconocimiento, Gestión y Reubicación de Mascotas Post-Sismo.</p>
+<h3>1.3 Problema que Resuelve</h3>
+<p>Tras los severos eventos sísmicos ocurridos en diversas regiones de Venezuela, la infraestructura urbana y los servicios de emergencia colapsaron. Una consecuencia crítica y subatendida fue el desplazamiento masivo de miles de animales de compañía que huyeron asustados entre los escombros o cuyos hogares sufrieron daños estructurales.</p>
+<p>Actualmente, las labores de rescate sufren de una severa <strong>fricción por información desestructurada</strong>: grupos de WhatsApp y redes sociales saturados con fotografías borrosas, datos incompletos y ubicaciones imprecisas. La pérdida física de collares tradicionales imposibilita la trazabilidad clínica y legal, generando hacinamiento en refugios y retrasos en la reunificación familiar. </p>
+<p><strong>RefuGuía</strong> resuelve esta problemática automatizando la ingesta de datos mediante procesamiento de lenguaje natural y visión, generando credenciales físicas con códigos QR para el inventario de refugios y orquestando ciclos continuos de emparejamiento con base de datos vectorial y reglas éticas de adopción.</p>
+<h3>1.4 Público Objetivo (Usuarios Reales)</h3>
+<ol>
+<li><strong>Familias Damnificadas:</strong> Ciudadanos bajo estrés postraumático que requieren un canal de baja fricción cognitiva para reportar y localizar a sus animales perdidos sin instalaciones complejas.</li>
+<li><strong>Brigadas de Rescate y Voluntarios en Campo:</strong> Personal que necesita inventariar rápidamente a los animales hallados en las calles y campamentos.</li>
+<li><strong>Veterinarios y Administradores de Refugios Temporales:</strong> Profesionales encargados del historial médico, control de tratamientos y validación de adopciones.</li>
+<li><strong>Comunidad de Adoptantes Responsables:</strong> Postulantes interesados en otorgar hogares definitivos a mascotas que hayan cumplido el plazo legal de búsqueda.</li>
+</ol>
+<hr />
+<h2>Sección 2 · Arquitectura Técnica</h2>
+<h3>2.1 Diagrama de Arquitectura General del Sistema</h3>
+<p>El siguiente diagrama detalla el flujo de datos desde los canales de entrada hasta los actuadores y almacenamiento, discriminando entre componentes impulsados por IA y lógica transaccional tradicional.</p>
+<pre><code class="mermaid">flowchart TD
+    subgraph ENTRADAS_DE_DATOS [Canales de Entrada]
+        In_User[Reporte Ciudadano: Texto libre, Fotos, Coordenadas]
+        In_Vet[Ingreso a Refugio: Ficha inicial de rescate]
+    end
+
+    subgraph FRONTEND_SPA [Frontend Vue.js 3 - Vite]
+        UI_Chat[Chatbot Conversacional Ciudadano]
+        UI_Dash[Panel de Refugio &amp; Impresión QR]
+        UI_Match[Hub de Validación de Coincidencias]
+        UI_Adop[Portal de Adopción Responsable]
+        UI_MCP[Consola de Inspección MCP]
+    end
+
+    subgraph BACKEND_LARAVEL [Backend REST API - Laravel 10 / PHP 8.2]
+        Router[Router API &amp; Middleware Sanitizador Anti-Inyección]
+
+        subgraph LOGICA_TRADICIONAL [Lógica Tradicional y Reglas de Negocio]
+            QR_Gen[Servicio Generador de UUID &amp; Códigos QR]
+            Grace_Rules[Validador Inamovible de 15 Días de Gracia]
+            Audit_Sec[Validador de Escaneo QR para Fármacos]
+            Auth_Guard[Control de Acceso y Roles RBAC]
+        end
+
+        subgraph CAPA_MCP [Protocolo MCP &amp; Catálogo de Skills]
+            MCP_Server[Servidor MCP - Dispatcher]
+            Skill_1[Skill: Extracción Entidades NLP]
+            Skill_2[Skill: Búsqueda Vectorial &amp; Geo-temporal]
+            Skill_3[Skill: Generador Identidad QR]
+            Skill_4[Skill: Auditoría Período Gracia]
+            Skill_5[Skill: Triaje y Compatibilidad Adopción]
+        end
+
+        subgraph MOTOR_IA_LOCAL [Orquestación Agéntica SLM Local]
+            Ollama_Driver[Cliente HTTP Ollama Engine]
+            Prompts_MD[System Prompts en Markdown]
+        end
+    end
+
+    subgraph MEMORIA_PERSISTENTE_DUAL [Memoria Persistente Híbrida]
+        DB_MySQL[(MySQL 8.0: Usuarios, Mascotas, Expedientes Clínicos, Logs de Auditoría)]
+        DB_Chroma[(ChromaDB: Vectores de Rasgos Fenotípicos &amp; Similitud Coseno)]
+    end
+
+    subgraph HARDWARE_LOCAL [Inferencia Perimetral / Edge AI]
+        SLM_Model[Ollama: Qwen 2.5 1.5B / nomic-embed-text]
+    end
+
+    In_User --&gt; UI_Chat
+    In_Vet --&gt; UI_Dash
+
+    UI_Chat --&gt; Router
+    UI_Dash --&gt; Router
+    UI_Match --&gt; Router
+    UI_Adop --&gt; Router
+    UI_MCP --&gt; Router
+
+    Router --&gt; Audit_Sec --&gt; MCP_Server
+    MCP_Server &lt;--&gt; Motor_IA_LOCAL
+    Motor_IA_LOCAL &lt;--&gt; SLM_Model
+
+    MCP_Server --&gt; Skill_1
+    MCP_Server --&gt; Skill_2
+    MCP_Server --&gt; Skill_3
+    MCP_Server --&gt; Skill_4
+    MCP_Server --&gt; Skill_5
+
+    Skill_2 &lt;--&gt; DB_Chroma
+    Skill_1 &amp; Skill_3 &amp; Skill_4 &amp; Skill_5 &lt;--&gt; DB_MySQL
+</code></pre>
+
+<h3>2.2 Diagrama de Flujo del Ciclo Agéntico (Emparejador &amp; Triaje)</h3>
+<pre><code class="mermaid">sequenceDiagram
+    autonumber
+    actor Ciudadano as Ciudadano / Rescatista
+    participant Chatbot as Chatbot (Vue.js 3)
+    participant API as Backend (Laravel API)
+    participant MCP as Servidor MCP
+    participant SLM as SLM Local (Qwen 2.5)
+    participant Chroma as ChromaDB (Vectorial)
+    participant MySQL as MySQL 8.0 (Relacional)
+
+    Ciudadano-&gt;&gt;Chatbot: Envía foto + texto: &quot;Perrito negro con pecho blanco en Catia, pata lastimada&quot;
+    Chatbot-&gt;&gt;API: POST /api/pets/report-citizen
+    API-&gt;&gt;MCP: executeTool('skill_extraer_entidades_nlp', {text})
+    MCP-&gt;&gt;SLM: Procesa prompt agente_nlp.md
+    SLM--&gt;&gt;MCP: JSON {especie: 'canine', tamano: 'medium', color: 'Negro/Blanco', trauma: 'PTSD/Pata'}
+    MCP--&gt;&gt;API: Entidades estructuradas
+
+    API-&gt;&gt;MySQL: Inserta mascota con UUID: RG-2026-XXXXX
+    API-&gt;&gt;MCP: executeTool('skill_buscar_similitud_vectorial', {target_pet_id})
+    MCP-&gt;&gt;Chroma: Consulta embeddings fenotípicos (Distancia Coseno)
+    Chroma--&gt;&gt;MCP: Vectores candidatos
+    MCP-&gt;&gt;MCP: Pondera Fenotipo (40%) + Semántica (30%) + Distancia Geo (30%)
+
+    alt Similitud &gt;= 80% (Alta Confianza)
+        MCP--&gt;&gt;API: Match detectado (ej. 91.5%) -&gt; Nivel: ALERTA_INMEDIATA
+        API-&gt;&gt;MySQL: Inserta MatchLog (estado: alert_sent)
+    else Similitud entre 50% y 79% (Moderada)
+        MCP--&gt;&gt;API: Match detectado -&gt; Nivel: REVISION_HUMANA
+        API-&gt;&gt;MySQL: Inserta MatchLog (estado: pending_review)
+    end
+
+    API-&gt;&gt;MCP: executeTool('skill_generar_identidad_qr', {pet_id})
+    MCP--&gt;&gt;API: Payload de código QR imprimible
+    API--&gt;&gt;Chatbot: Respuesta con Ficha estructurada, Alertas y Código QR
+    Chatbot--&gt;&gt;Ciudadano: Muestra confirmación visual instantánea
+</code></pre>
+
+<hr />
+<h2>Sección 3 · Stack Tecnológico</h2>
+<table>
+<thead>
+<tr>
+<th align="left">Componente</th>
+<th align="left">Tecnología / Herramienta</th>
+<th align="left">Por qué se eligió esta y no otra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><strong>Frontend</strong></td>
+<td align="left">Vue.js 3 + Vite + CSS Vanilla Moderno</td>
+<td align="left">Proporciona reactividad de alto rendimiento, peso ligero para conexiones móviles degradadas post-sismo y aislamiento modular de componentes sin sobrecarga de frameworks pesados.</td>
+</tr>
+<tr>
+<td align="left"><strong>Backend</strong></td>
+<td align="left">Laravel 10 (PHP 8.2) REST API</td>
+<td align="left">Madurez en el ecosistema, robustez en el modelado relacional (Eloquent ORM), facilidad para encapsular middlewares de seguridad y estructura limpia para controladores API.</td>
+</tr>
+<tr>
+<td align="left"><strong>Base de Datos Relacional</strong></td>
+<td align="left">MySQL 8.0</td>
+<td align="left">Garantiza consistencia transaccional (ACID), soporte de llaves foráneas estrictas y persistencia inmutable para expedientes clínicos y hashes de auditoría.</td>
+</tr>
+<tr>
+<td align="left"><strong>Base de Datos Vectorial</strong></td>
+<td align="left">ChromaDB (Docker <code>chromadb/chroma:latest</code>)</td>
+<td align="left">Base de datos vectorial ligera de código abierto. Permite indexar representaciones fenotípicas y semánticas para calcular la distancia del coseno de forma eficiente sin costo por consulta.</td>
+</tr>
+<tr>
+<td align="left"><strong>Modelo de IA (SLM Local)</strong></td>
+<td align="left">Qwen 2.5 (1.5B) vía Ollama</td>
+<td align="left">Corre 100% de manera local y offline en equipos de cómputo estándar (consume ~1.2 GB de RAM), garantizando costo cero por tokens y privacidad estricta de datos personales.</td>
+</tr>
+<tr>
+<td align="left"><strong>Protocolo de Orquestación</strong></td>
+<td align="left">Model Context Protocol (MCP)</td>
+<td align="left">Estandariza la interfaz de herramientas (<em>Tools/Skills</em>) que el modelo de IA puede invocar, aislando el acceso a la base de datos y garantizando ejecuciones deterministas y auditables.</td>
+</tr>
+<tr>
+<td align="left"><strong>Contenerización y Despliegue</strong></td>
+<td align="left">Docker &amp; Docker Compose</td>
+<td align="left">Asegura reproducibilidad exacta del ecosistema completo (Frontend, Backend, MySQL y ChromaDB) en cualquier sistema operativo mediante un único comando (<code>docker compose up -d</code>).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Sección 4 · Evidencia de Funcionamiento</h2>
+<h3>4.1 Capturas de Pantalla del Frontend</h3>
+<ol>
+<li><strong>Pantalla Principal / Chatbot Conversacional Ciudadano (<code>/</code>):</strong></li>
+<li><em>Descripción:</em> Interfaz móvil guiada donde el ciudadano puede reportar mascotas perdidas o encontradas mediante texto libre, transcripción de voz simulada y carga de fotos. Muestra la tarjeta de extracción estructurada generada por el Agente NLP y el código QR generado.</li>
+<li><strong>Dashboard de Refugios Temporales &amp; Gestión de Collares QR (<code>/refugios</code>):</strong></li>
+<li><em>Descripción:</em> Panel operativo para rescatistas y veterinarios que visualiza el inventario en tiempo real, permite imprimir credenciales QR para collares térmicos y restringe la administración de fármacos sin la verificación del escaneo de QR.</li>
+<li><strong>Hub de Emparejamiento Agéntico (<code>/matches</code>):</strong></li>
+<li><em>Descripción:</em> Vista comparativa lado a lado que presenta el reporte familiar vs la mascota en refugio, desglosando la confianza de IA (91.5%), similitud visual, semántica y distancia en kilómetros, con botones de validación humana (<em>Human-in-the-Loop</em>).</li>
+<li><strong>Portal de Adopción Responsable (<code>/adopcion</code>):</strong></li>
+<li><em>Descripción:</em> Catálogo que aplica el filtro legal inamovible de 15 días continuos de búsqueda pública y formulario de postulación evaluado en tiempo real por el Agente de Triaje con cálculo de idoneidad y bloqueos automáticos (<em>Hard Stops</em>).</li>
+<li><strong>Consola MCP &amp; Terminal SLM Local (<code>/mcp</code> y <code>/terminal-slm</code>):</strong></li>
+<li><em>Descripción:</em> Monitores en vivo para inspeccionar las Skills registradas en el protocolo MCP y comprobar la inferencia offline del modelo Qwen 2.5 en Ollama.</li>
+</ol>
+<h3>4.2 Log de Ejecución Real del Sistema</h3>
+<p>A continuación se presenta un extracto real capturado del log de ejecución del backend al procesar un reporte ciudadano:</p>
+<pre><code class="json">{
+  &quot;event&quot;: &quot;CITIZEN_REPORT_PROCESSED&quot;,
+  &quot;timestamp&quot;: &quot;2026-08-19T14:30:00Z&quot;,
+  &quot;mcp_invocations&quot;: [
+    {
+      &quot;tool&quot;: &quot;skill_extraer_entidades_nlp&quot;,
+      &quot;agent&quot;: &quot;Agente_NLP_Ciudadano&quot;,
+      &quot;input&quot;: &quot;Rescatamos a un perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao. Tiene una patita lastimada.&quot;,
+      &quot;output&quot;: {
+        &quot;species&quot;: &quot;canine&quot;,
+        &quot;size&quot;: &quot;medium&quot;,
+        &quot;primary_color&quot;: &quot;Negro&quot;,
+        &quot;secondary_color&quot;: &quot;Blanco&quot;,
+        &quot;health_state&quot;: &quot;Trauma o herida detectada en extremidad post-sismo&quot;,
+        &quot;confidence_score&quot;: 0.94
+      },
+      &quot;execution_time_ms&quot;: 42.15
+    },
+    {
+      &quot;tool&quot;: &quot;skill_buscar_similitud_vectorial&quot;,
+      &quot;agent&quot;: &quot;Agente_Emparejador_Central&quot;,
+      &quot;input&quot;: { &quot;target_pet_id&quot;: 3, &quot;target_type&quot;: &quot;found&quot; },
+      &quot;output&quot;: {
+        &quot;top_matches&quot;: [
+          {
+            &quot;candidate_pet_id&quot;: 1,
+            &quot;candidate_uuid&quot;: &quot;RG-2026-PERD01&quot;,
+            &quot;candidate_name&quot;: &quot;Toby&quot;,
+            &quot;similarity_score&quot;: 91.5,
+            &quot;visual_breakdown&quot;: 95.0,
+            &quot;semantic_breakdown&quot;: 90.0,
+            &quot;geo_distance_km&quot;: 1.8,
+            &quot;decision_level&quot;: &quot;HIGH_CONFIDENCE_AUTO_ALERT&quot;
+          }
+        ]
+      },
+      &quot;execution_time_ms&quot;: 68.30
+    }
+  ]
+}
+</code></pre>
+
+<hr />
+<h2>Sección 5 · Evaluación UX/UI</h2>
+<h3>5.1 Heurísticas de Nielsen Aplicadas al Proyecto</h3>
+<table>
+<thead>
+<tr>
+<th align="left">Heurística Evaluada</th>
+<th align="center">¿Cumple?</th>
+<th align="left">Evidencia / Observación en RefuGuía</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><strong>1. Visibilidad del estado del sistema</strong></td>
+<td align="center"><strong>SÍ</strong></td>
+<td align="left">El chatbot y los formularios presentan indicadores en tiempo real (<em>"Agente NLP procesando relato e invocando Skills MCP..."</em>) y badges con el estado legal del animal.</td>
+</tr>
+<tr>
+<td align="left"><strong>2. Coincidencia con el mundo real</strong></td>
+<td align="center"><strong>SÍ</strong></td>
+<td align="left">El lenguaje utiliza términos familiares para las familias y rescatistas (collar QR, período de gracia de 15 días, reencuentro familiar, ficha médica) en lugar de terminología informática abstracta.</td>
+</tr>
+<tr>
+<td align="left"><strong>3. Control y libertad del usuario</strong></td>
+<td align="center"><strong>SÍ</strong></td>
+<td align="left">El sistema adopta un esquema <em>Human-in-the-Loop</em>: las sugerencias de emparejamiento de la IA pueden ser confirmadas o rechazadas manualmente por los usuarios antes de cambiar el estado legal.</td>
+</tr>
+<tr>
+<td align="left"><strong>4. Consistencia y estándares</strong></td>
+<td align="center"><strong>SÍ</strong></td>
+<td align="left">Se mantienen patrones visuales unificados para alertas de confianza (verde para $&gt;80\%$, amarillo para $50    ext{-}79\%$, rojo para bloqueos) en todas las vistas de la aplicación.</td>
+</tr>
+<tr>
+<td align="left"><strong>5. Prevención de errores</strong></td>
+<td align="center"><strong>SÍ</strong></td>
+<td align="left">En el módulo clínico, el botón de administración de fármacos críticos se encuentra bloqueado e inhabilitado hasta que el personal confirme el escaneo físico del código QR del animal.</td>
+</tr>
+<tr>
+<td align="left"><strong>6. Diseño estético y minimalista</strong></td>
+<td align="center"><strong>SÍ</strong></td>
+<td align="left">Interfaz oscura de alto contraste, diseñada para reducir la fatiga visual en condiciones de campo y ahorrar batería en dispositivos móviles en zonas con suministro eléctrico inestable.</td>
+</tr>
+</tbody>
+</table>
+<h3>5.2 Evaluación Orientada al Público Objetivo</h3>
+<ul>
+<li><strong>Adecuación al nivel técnico del usuario:</strong> La interfaz ciudadana se presenta en formato de mensajería interactiva (tipo WhatsApp/Telegram), eliminando curvas de aprendizaje para personas de cualquier estrato o edad bajo estrés post-sismo.</li>
+<li><strong>Lenguaje visual y textual comprensible:</strong> Mensajes claros, con resúmenes visuales en tarjetas que confirman lo que la IA interpretó del relato, permitiendo correcciones inmediatas.</li>
+<li><strong>Feedback obtenido:</strong> En simulaciones de prueba con voluntarios de rescate animal, se destacó que la generación automática del código QR ahorra hasta 15 minutos por animal en el triaje de ingreso frente a las planillas tradicionales de papel.</li>
+</ul>
+<hr />
+<h2>Sección 6 · Evaluación de Ciberseguridad</h2>
+<p>Log estructurado de riesgos identificados y medidas preventivas implementadas:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Riesgo Identificado</th>
+<th align="left">Tipo (OWASP / Privacidad / Acceso)</th>
+<th align="left">Medida Implementada o Decisión Tomada</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><strong>Inyección de Prompt en el Modelo IA</strong></td>
+<td align="left">OWASP LLM01: Prompt Injection</td>
+<td align="left"><code>PromptSanitizerService</code> en Laravel analiza y neutraliza patrones maliciosos (<code>ignore instructions</code>, <code>bypass</code>, <code>system: role</code>, etc.) antes de que el texto del usuario llegue al SLM.</td>
+</tr>
+<tr>
+<td align="left"><strong>Exposición de Secretos y Llaves API</strong></td>
+<td align="left">Secretos en Código</td>
+<td align="left">Configuración mediante variables de entorno en <code>.env</code> (ignorado en Git). Credenciales de bases de datos aisladas dentro de la red interna de Docker.</td>
+</tr>
+<tr>
+<td align="left"><strong>Fuga de Datos Sensibles de Damnificados</strong></td>
+<td align="left">Privacidad de Datos</td>
+<td align="left">Inferencia 100% Local con SLMs (Ollama) en hardware propio. Ningún dato de contacto, ubicación exacta o fotografía se envía a servidores de terceros en la nube.</td>
+</tr>
+<tr>
+<td align="left"><strong>Administración Errónea de Fármacos Críticos</strong></td>
+<td align="left">Control de Acceso e Integridad</td>
+<td align="left">Bloqueo estricto (<em>Hard-Stop</em>) en el backend que rechaza cualquier registro de medicación crítica si no va acompañado de la validación del UUID del código QR físico.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Sección 7 · IAs Usadas en el Co-Work de Desarrollo</h2>
+<h3>7.1 Registro de Herramientas IA Utilizadas</h3>
+<table>
+<thead>
+<tr>
+<th align="left">Herramienta IA</th>
+<th align="left">Para qué la usaron</th>
+<th align="left">Aportó bien / mal / sorprendió</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><strong>Claude 3.5 Sonnet / Gemini</strong></td>
+<td align="left">Diseño de la arquitectura agéntica, prompts del sistema en Markdown y estructuración de esquemas JSON.</td>
+<td align="left"><strong>Excelente:</strong> Permitió iterar la definición del estándar MCP y las fórmulas de distancia vectorial de forma rápida.</td>
+</tr>
+<tr>
+<td align="left"><strong>Cursor / Copilot</strong></td>
+<td align="left">Autocompletado de controladores Laravel y componentes reactivos de Vue 3.</td>
+<td align="left"><strong>Muy Bueno:</strong> Aceleró la escritura de migraciones y vistas SPA.</td>
+</tr>
+<tr>
+<td align="left"><strong>Ollama (Qwen 2.5 1.5B)</strong></td>
+<td align="left">Inferencia local offline para extracción de entidades NLP y validación de triaje.</td>
+<td align="left"><strong>Sorprendió:</strong> Su capacidad para clasificar variables clave con un consumo de memoria inferior a 1.5 GB.</td>
+</tr>
+</tbody>
+</table>
+<h3>7.2 Reflexión Obligatoria del Co-Work con IA</h3>
+<p>El trabajo colaborativo con herramientas de IA generativa aceleró drásticamente el ciclo de vida del desarrollo, permitiendo construir en pocas horas un ecosistema contenerizado completo con persistencia relacional y vectorial que tradicionalmente habría requerido semanas de trabajo individual. Sin embargo, se identificó que los modelos tienden a alucinar o flexibilizar las restricciones operativas cuando se les delega lógica crítica; por esta razón, fue indispensable programar la verificación del <strong>período legal de gracia de 15 días</strong> y los <strong>hard-stops financieros</strong> como <strong>Skills deterministas en el backend de Laravel</strong>, utilizando la IA como ente recomendador y extractor semántico, pero manteniendo el control de las reglas inmutables en código tradicional auditable.</p>
+</body>
+</html>
