@@ -7,6 +7,7 @@ use App\Models\Pet;
 use App\Services\Ai\LocalSlmService;
 use App\Services\Ai\ChromaVectorService;
 use App\Services\Mcp\Skills\QrIdentitySkill;
+use App\Services\Mcp\Skills\VectorSimilaritySkill;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use RuntimeException;
@@ -16,15 +17,18 @@ class PetController extends Controller
     protected LocalSlmService $slmService;
     protected ChromaVectorService $chromaService;
     protected QrIdentitySkill $qrSkill;
+    protected VectorSimilaritySkill $vectorSkill;
 
     public function __construct(
         LocalSlmService $slmService,
         ChromaVectorService $chromaService,
-        QrIdentitySkill $qrSkill
+        QrIdentitySkill $qrSkill,
+        VectorSimilaritySkill $vectorSkill
     ) {
         $this->slmService = $slmService;
         $this->chromaService = $chromaService;
         $this->qrSkill = $qrSkill;
+        $this->vectorSkill = $vectorSkill;
     }
 
     public function index(Request $request)
@@ -136,7 +140,9 @@ class PetController extends Controller
         $pet = Pet::create([
             'uuid' => $uuid,
             'report_type' => $reportType,
-            'name' => "{$nlpData['breed']} ({$uuid})",
+            'name' => ($reportType === 'lost') 
+                ? "Búsqueda Familiar: {$nlpData['breed']}" 
+                : "Rescatado: {$nlpData['breed']}",
             'species' => $species,
             'breed' => $nlpData['breed'],
             'size' => $size,
@@ -154,10 +160,7 @@ class PetController extends Controller
             'user_id' => 1
         ]);
 
-        // 4. Generar Credencial QR
-        $qrData = $this->qrSkill->execute(['pet_id' => $pet->id]);
-
-        // 5. Indexación y Vectorización Real en ChromaDB
+        // 4. Indexación y Vectorización Real en ChromaDB
         $this->chromaService->indexPetDocument(
             $pet->id,
             "{$pet->name} {$pet->species} {$pet->breed} {$pet->primary_color} {$pet->distinctive_marks}",
@@ -165,16 +168,39 @@ class PetController extends Controller
                 'pet_id' => $pet->id,
                 'uuid' => $pet->uuid,
                 'report_type' => $pet->report_type,
-                'species' => $pet->species
+                'species' => $pet->species,
+                'status' => $pet->status
             ]
         );
 
+        // 5. FLUJO DIFERENCIADO POR ROL:
+        // A) SI ES RESCATE (RESCATISTA/REFUGIO): Genera Collar QR físico
+        $qrBadgeData = null;
+        if ($reportType === 'found') {
+            $qrData = $this->qrSkill->execute(['pet_id' => $pet->id]);
+            $qrBadgeData = $qrData['data'] ?? null;
+        }
+
+        // B) SI ES BÚSQUEDA FAMILIAR (DAMNIFICADO): Ejecuta búsqueda vectorial contra los rescatados
+        $matchesFound = [];
+        if ($reportType === 'lost') {
+            $similarityResult = $this->vectorSkill->execute([
+                'target_pet_id' => $pet->id,
+                'target_type' => 'found'
+            ]);
+            $matchesFound = $similarityResult['top_matches'] ?? [];
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Reporte vectorizado e indexado exitosamente por el Modelo Local Ollama (Qwen 2.5:1.5B).',
+            'message' => ($reportType === 'lost')
+                ? 'Reporte de búsqueda familiar registrado y cotejado contra el inventario de refugios.'
+                : 'Mascota rescatada registrada e ingresada al inventario del refugio.',
+            'report_type' => $reportType,
             'pet' => $pet,
             'nlp_extraction' => $nlpData,
-            'qr_badge' => $qrData['data'] ?? []
+            'qr_badge' => $qrBadgeData,
+            'matches_found' => $matchesFound
         ], 201);
     }
 }

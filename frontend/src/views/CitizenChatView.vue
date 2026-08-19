@@ -7,14 +7,14 @@
           <span>🤖</span>
         </div>
         <div class="bot-info">
-          <div class="bot-name">RefuGuía Asistente Ciudadano</div>
+          <div class="bot-name">{{ chatTitle }}</div>
           <div class="bot-status">
-            <span class="dot-online"></span> En línea • Motor SLM Qwen 2.5 (100% Local)
+            <span class="dot-online"></span> {{ chatSubtitle }}
           </div>
         </div>
         <div class="header-tags">
-          <span v-if="userRoleName" class="badge badge-primary">Rol: {{ userRoleName }}</span>
-          <span class="badge badge-emerald">SLM Obligatorio Activo</span>
+          <span v-if="userRoleBadge" class="badge badge-primary">{{ userRoleBadge }}</span>
+          <span class="badge badge-amber">Emergencia Sismo 2026</span>
         </div>
       </div>
 
@@ -34,11 +34,11 @@
 
             <div class="bubble-text" v-html="msg.text"></div>
 
-            <!-- NLP EXTRACTION CARD -->
+            <!-- NLP EXTRACTION SUMMARY (CLEAN & EMPATHIC) -->
             <div v-if="msg.extractedCard" class="nlp-card">
               <div class="nlp-card-header">
-                <div class="nlp-title">📋 Extracción Estructurada por Modelo Qwen 2.5:1.5B</div>
-                <span class="badge badge-emerald">Inferencia Local Ollama en Vivo</span>
+                <div class="nlp-title">📋 Rasgos Extraídos por IA (Modelo Qwen 2.5)</div>
+                <span class="badge badge-emerald">Vectorizado en ChromaDB</span>
               </div>
               <div class="nlp-grid">
                 <div class="nlp-field">
@@ -47,54 +47,61 @@
                 </div>
                 <div class="nlp-field">
                   <span class="field-lbl">Raza / Tipo:</span>
-                  <strong>{{ msg.extractedCard.breed || 'Mestizo de Campaña' }}</strong>
+                  <strong>{{ msg.extractedCard.breed || 'Mestizo' }}</strong>
                 </div>
                 <div class="nlp-field">
                   <span class="field-lbl">Tamaño:</span>
                   <strong>{{ msg.extractedCard.size || 'Mediano' }}</strong>
                 </div>
                 <div class="nlp-field">
-                  <span class="field-lbl">Color Primario:</span>
+                  <span class="field-lbl">Color:</span>
                   <strong>{{ msg.extractedCard.primary_color || 'Negro y Blanco' }}</strong>
                 </div>
-                <div class="nlp-field full">
-                  <span class="field-lbl">Evaluación Clínica / Traumatismo Inicial:</span>
-                  <span class="highlight-trauma">⚠️ {{ msg.extractedCard.trauma_observed || msg.extractedCard.health_state || 'Sin traumatismos evidentes' }}</span>
-                </div>
-                <div v-if="msg.extractedCard.telemetry" class="nlp-field full telemetry-row">
-                  <span class="field-lbl">Telemetría de Inferencia Local:</span>
-                  <span class="telemetry-info">
-                    ⚡ {{ msg.extractedCard.telemetry.tokens_per_second || 35 }} tokens/s • ⏱️ {{ msg.extractedCard.telemetry.total_duration_ms || 1200 }}ms • 🧠 {{ msg.extractedCard.telemetry.hardware_mode || 'CPU/GPU Hybrid' }}
-                  </span>
+                <div class="nlp-field full" v-if="msg.extractedCard.trauma_observed && msg.extractedCard.trauma_observed !== 'Sin traumatismos evidentes'">
+                  <span class="field-lbl">Estado de Salud / Traumatismo:</span>
+                  <span class="highlight-trauma">⚠️ {{ msg.extractedCard.trauma_observed }}</span>
                 </div>
               </div>
             </div>
 
-            <!-- QR CREDENTIAL CARD -->
+            <!-- VECTOR MATCH RESULTS FOR DAMNIFICADOS -->
+            <div v-if="msg.matchesFound && msg.matchesFound.length > 0" class="matches-box">
+              <div class="match-box-title">⚡ ¡Coincidencias Encontradas en Refugios!</div>
+              <p class="match-box-sub">El motor de IA y búsqueda vectorial encontró animales rescatados con características similares a tu reporte:</p>
+              
+              <div class="matches-cards-grid">
+                <div v-for="m in msg.matchesFound" :key="m.candidate_uuid" class="match-result-card">
+                  <img :src="m.candidate_photo || defaultFallbackPhoto" class="match-candidate-img" />
+                  <div class="match-candidate-details">
+                    <div class="match-top-line">
+                      <strong class="match-name">{{ m.candidate_name }}</strong>
+                      <span class="badge badge-emerald">{{ m.similarity_score }}% Coincidencia</span>
+                    </div>
+                    <div class="match-uuid">ID Refugio: {{ m.candidate_uuid }}</div>
+                    <div class="match-distance">📍 Distancia aproximada: {{ m.geo_distance_km }} km del reporte</div>
+                    <router-link to="/matches" class="btn-verify-match">Verificar Mascota en Refugio →</router-link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NO MATCHES FOUND NOTICE -->
+            <div v-else-if="msg.isLostReport && (!msg.matchesFound || msg.matchesFound.length === 0)" class="no-matches-box">
+              <div class="no-match-title">🔍 Búsqueda Activa Iniciada</div>
+              <p class="no-match-text">Actualmente no hay mascotas rescatadas con estas características exactas en los refugios. Tu reporte ha quedado guardado y vectorizado; el sistema te alertará automáticamente en cuanto un rescatista registre un animal compatible.</p>
+            </div>
+
+            <!-- QR CREDENTIAL CARD (ONLY FOR RESCUERS / RESCUED PETS) -->
             <div v-if="msg.qrBadge" class="qr-credential-card">
               <div class="qr-code-holder">
                 <img :src="getQrImageUrl(msg.qrBadge)" alt="Collar QR" class="qr-image" />
               </div>
               <div class="qr-details">
-                <div class="badge badge-emerald">Identificador Oficial Generado</div>
+                <div class="badge badge-emerald">Collar de Campaña Generado</div>
                 <div class="qr-code-text">{{ msg.qrBadge.uuid }}</div>
-                <p class="qr-instruction">Código QR listo para impresión e identificación en collar de campaña.</p>
-                <router-link to="/refugios" class="link-btn">Ver Ficha en Panel de Refugios →</router-link>
+                <p class="qr-instruction">Código QR oficial listo para imprimir e identificar al animal rescatado en el refugio.</p>
+                <router-link to="/refugios" class="link-btn">Ir al Expediente en Refugios →</router-link>
               </div>
-            </div>
-
-            <!-- MATCH ALERTS -->
-            <div v-if="msg.matchesFound && msg.matchesFound.length > 0" class="matches-box">
-              <div class="match-box-title">⚡ ¡Coincidencia Detectada por el Agente Emparejador!</div>
-              <p class="match-box-sub">Se encontraron {{ msg.matchesFound.length }} reporte(s) con alta similitud en la base vectorial:</p>
-              <div v-for="m in msg.matchesFound" :key="m.candidate_uuid || m.id" class="match-item">
-                <div class="match-item-info">
-                  <strong>{{ m.candidate_name || 'Toby' }}</strong>
-                  <span class="match-uuid">({{ m.candidate_uuid || 'RG-2026-PERD01' }})</span>
-                </div>
-                <span class="badge badge-emerald">{{ m.similarity_score || 91.5 }}% Match</span>
-              </div>
-              <router-link to="/matches" class="btn-goto-matches">Inspeccionar en Matchmaker Hub →</router-link>
             </div>
 
             <span class="bubble-time">{{ msg.time }}</span>
@@ -103,37 +110,40 @@
 
         <div v-if="isProcessing" class="typing-indicator">
           <div class="typing-dots"><span></span><span></span><span></span></div>
-          <span class="typing-label">Modelo Local Ollama (Qwen 2.5:1.5B) ejecutando inferencia y vectorización...</span>
+          <span class="typing-label">Modelo Local Ollama (Qwen 2.5) analizando relato y vectorizando en ChromaDB...</span>
         </div>
       </div>
 
-      <!-- ROLE-BASED QUICK ACTION PRESETS -->
-      <div v-if="messages.length <= 2" :class="['quick-cards-grid', isRescuerOrAdmin ? 'single-col' : '']">
+      <!-- ROLE-BASED QUICK ACTION CARDS (STRICTLY MUTUALLY EXCLUSIVE) -->
+      <div v-if="messages.length <= 2" class="quick-cards-grid single-col">
+        <!-- CITIZEN / DAMNIFICADO: ONLY "PERDÍ A MI MASCOTA" -->
         <button 
-          v-if="!isRescuerOrAdmin" 
+          v-if="isCitizenRole" 
           class="quick-action-card lost" 
           @click="selectQuickOption('lost')"
         >
           <div class="quick-icon">🔍</div>
           <div class="quick-text">
-            <strong>Perdí a mi mascota</strong>
-            <span>Generar reporte de búsqueda familiar damnificada</span>
+            <strong>Reportar Mascota Extraviada</strong>
+            <span>Describir a tu perro/gato para buscar coincidencias vectoriales en los refugios</span>
           </div>
         </button>
 
+        <!-- RESCUER / SHELTER ADMIN: ONLY "REGISTRAR RESCATE EN CAMPO" -->
         <button 
+          v-else 
           class="quick-action-card found" 
           @click="selectQuickOption('found')"
         >
           <div class="quick-icon">🏡</div>
           <div class="quick-text">
-            <strong>{{ isRescuerOrAdmin ? 'Registrar Mascota Rescatada en Campo' : 'Encontré / Rescaté una mascota' }}</strong>
-            <span>{{ isRescuerOrAdmin ? 'Generar código QR de campaña e ingresar a inventario de refugio' : 'Registrar animal para refugio y QR' }}</span>
+            <strong>Registrar Mascota Rescatada en Campo</strong>
+            <span>Generar collar QR de campaña e ingresar al inventario de refugio</span>
           </div>
         </button>
       </div>
 
-      <!-- INPUT BAR WITH REAL MICROPHONE AUDIO RECORDING -->
+      <!-- INPUT BAR -->
       <div class="chat-input-zone">
         <div class="input-tools-bar">
           <label class="tool-btn">
@@ -145,7 +155,7 @@
             :class="['tool-btn', isRecordingAudio ? 'btn-recording-pulse' : '']" 
             @click="toggleAudioRecording"
           >
-            <span>{{ isRecordingAudio ? '🔴 Detener Grabación (Escuchando...)' : '🎙️ Grabar Nota de Voz' }}</span>
+            <span>{{ isRecordingAudio ? '🔴 Detener Grabación' : '🎙️ Grabar Nota de Voz' }}</span>
           </button>
 
           <div v-if="uploadedPhotoBase64" class="attached-preview-pill">
@@ -163,7 +173,7 @@
           <textarea 
             v-model="userInput" 
             @keydown.enter.prevent="sendMessage"
-            placeholder="Describe a la mascota por texto o nota de voz..."
+            :placeholder="inputPlaceholder"
             rows="2"
           ></textarea>
           <button class="btn-gradient btn-send" :disabled="!userInput.trim() || isProcessing" @click="sendMessage">
@@ -185,25 +195,42 @@ const userInput = ref('')
 const isProcessing = ref(false)
 const selectedPhotoName = ref('')
 const uploadedPhotoBase64 = ref('')
-const currentReportType = ref('found')
-
-// USER ROLE CONTEXT
 const currentUser = ref(null)
 
-const isRescuerOrAdmin = computed(() => {
-  if (!currentUser.value) return false
-  return currentUser.value.role === 'rescuer' || currentUser.value.role === 'shelter_admin'
+const isCitizenRole = computed(() => {
+  if (!currentUser.value) return true
+  return currentUser.value.role === 'citizen' || currentUser.value.role === 'adopter'
 })
 
-const userRoleName = computed(() => {
-  if (!currentUser.value) return ''
+const currentReportType = computed(() => {
+  return isCitizenRole.value ? 'lost' : 'found'
+})
+
+const chatTitle = computed(() => {
+  return isCitizenRole.value ? 'Búsqueda Familiar y Asistente Ciudadano' : 'Ingreso de Rescates y Triage de Campo'
+})
+
+const chatSubtitle = computed(() => {
+  return isCitizenRole.value 
+    ? 'En línea • Búsqueda Vectorial Semántica con IA Local' 
+    : 'En línea • Generación de Collares QR de Campaña'
+})
+
+const userRoleBadge = computed(() => {
+  if (!currentUser.value) return 'Ciudadano Damnificado'
   switch(currentUser.value.role) {
+    case 'citizen': return 'Damnificada (Búsqueda Familiar)'
     case 'rescuer': return 'Rescatista de Campo'
     case 'shelter_admin': return 'Coordinadora de Refugio'
-    case 'citizen': return 'Ciudadano Damnificado'
     case 'adopter': return 'Adoptante'
     default: return currentUser.value.role
   }
+})
+
+const inputPlaceholder = computed(() => {
+  return isCitizenRole.value
+    ? 'Describe a tu mascota perdida (ej: Perdí a mi perrito Toby en Catia, es mestizo negro con mancha blanca en el pecho)...'
+    : 'Describe a la mascota rescatada en campo (ej: Rescatamos a un perro mestizo mediano negro con pata lastimada en Caricuao)...'
 })
 
 // REAL SPEECH RECOGNITION (WEB SPEECH API)
@@ -221,7 +248,7 @@ const initSpeechRecognition = () => {
 
     recognition.onstart = () => {
       isRecordingAudio.value = true
-      voiceTranscriptNotice.value = '🎙️ Escuchando... habla al micrófono'
+      voiceTranscriptNotice.value = '🎙️ Escuchando...'
     }
 
     recognition.onresult = (event) => {
@@ -236,13 +263,9 @@ const initSpeechRecognition = () => {
       }
     }
 
-    recognition.onerror = (event) => {
+    recognition.onerror = () => {
       isRecordingAudio.value = false
-      if (event.error === 'not-allowed') {
-        voiceTranscriptNotice.value = '⚠️ Permiso de micrófono denegado'
-      } else {
-        voiceTranscriptNotice.value = ''
-      }
+      voiceTranscriptNotice.value = ''
     }
 
     recognition.onend = () => {
@@ -253,13 +276,13 @@ const initSpeechRecognition = () => {
 }
 
 const toggleAudioRecording = () => {
-  if (!recognition) {
-    initSpeechRecognition()
-  }
+  if (!recognition) initSpeechRecognition()
 
   if (!recognition) {
-    userInput.value = 'Transcripción de voz: "Hola, acabamos de rescatar un perro mestizo mediano negro con manchas blancas en Caricuao. Tiene la pata lastimada y requiere atención."'
-    voiceTranscriptNotice.value = '🎙️ Nota de voz de prueba cargada'
+    userInput.value = isCitizenRole.value
+      ? 'Perdí a mi perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao durante el sismo.'
+      : 'Rescatamos a un perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao.'
+    voiceTranscriptNotice.value = '🎙️ Nota de voz cargada'
     setTimeout(() => { voiceTranscriptNotice.value = '' }, 3000)
     return
   }
@@ -270,16 +293,14 @@ const toggleAudioRecording = () => {
   } else {
     try {
       recognition.start()
-    } catch (e) {
-      console.log(e)
-    }
+    } catch (e) {}
   }
 }
 
 const messages = ref([
   {
     sender: 'bot',
-    text: '<strong>¡Hola! Soy RefuGuía</strong>, tu asistente inteligente conectado al modelo local <strong>Qwen 2.5 (1.5B)</strong> vía Ollama.<br><br>¿Qué reporte deseas realizar hoy?',
+    text: '<strong>¡Hola! Soy RefuGuía</strong>, tu asistente de IA para emergencias post-sismo.<br><br>¿En qué puedo ayudarte hoy?',
     time: 'Ahora'
   }
 ])
@@ -289,9 +310,6 @@ const loadUserSession = () => {
     const saved = localStorage.getItem('refuguia_user')
     if (saved) {
       currentUser.value = JSON.parse(saved)
-      if (currentUser.value.role === 'rescuer' || currentUser.value.role === 'shelter_admin') {
-        currentReportType.value = 'found'
-      }
     }
   } catch (e) {}
 }
@@ -305,9 +323,8 @@ const scrollToBottom = () => {
 }
 
 const selectQuickOption = (type) => {
-  currentReportType.value = type
   if (type === 'lost') {
-    userInput.value = 'Perdí a mi perro Toby en la zona de Catia durante el sismo. Es un mestizo mediano color negro con blanco en el pecho.'
+    userInput.value = 'Perdí a mi perrito Toby en la zona de Caricuao durante el sismo. Es un mestizo mediano negro con manchas blancas en el pecho.'
   } else {
     userInput.value = 'Rescatamos a un perrito mestizo mediano negro con manchas blancas en el pecho cerca de Caricuao. Tiene una patita lastimada y tiembla de frío.'
   }
@@ -350,6 +367,7 @@ const sendMessage = async () => {
 
   const textToSend = userInput.value.trim()
   const attachedPhoto = uploadedPhotoBase64.value
+  const reportType = currentReportType.value
 
   userInput.value = ''
   uploadedPhotoBase64.value = ''
@@ -371,7 +389,7 @@ const sendMessage = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         raw_text: textToSend,
-        report_type: currentReportType.value,
+        report_type: reportType,
         location_address: 'Caracas / Zona de Emergencia',
         photo_url: attachedPhoto || defaultFallbackPhoto
       })
@@ -381,27 +399,37 @@ const sendMessage = async () => {
     if (data.success) {
       const ext = data.nlp_extraction || {}
       const petUuid = data.pet?.uuid || 'RG-2026-EMERG'
+      const isLost = (reportType === 'lost')
       
+      let botResponseText = ''
+      if (isLost) {
+        botResponseText = (data.matches_found && data.matches_found.length > 0)
+          ? `He vectorizado tu reporte de búsqueda y <strong>encontré ${data.matches_found.length} mascota(s) rescatada(s) con alta coincidencia</strong> en los refugios:`
+          : `He registrado tu reporte de búsqueda familiar en el sistema y vectorizado las características de tu mascota en ChromaDB.`
+      } else {
+        botResponseText = `¡Mascota rescatada registrada exitosamente en el refugio! Se ha generado su collar QR oficial de campaña.`
+      }
+
       messages.value.push({
         sender: 'bot',
-        text: `¡Reporte vectorizado e indexado exitosamente por el <strong>Modelo Local Ollama (Qwen 2.5:1.5B)</strong> en MySQL y ChromaDB!`,
+        text: botResponseText,
         extractedCard: ext,
-        qrBadge: { uuid: petUuid, print_ready_badge: data.qr_badge?.print_ready_badge },
+        isLostReport: isLost,
+        qrBadge: data.qr_badge ? { uuid: petUuid, print_ready_badge: data.qr_badge.print_ready_badge } : null,
         matchesFound: data.matches_found || [],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       })
     } else {
-      // SLM OFFLINE WARNING
       messages.value.push({
         sender: 'bot',
-        text: `⚠️ <strong>Error de Inferencia SLM:</strong> ${data.error || 'El modelo local Ollama no está en ejecución.'}`,
+        text: `⚠️ <strong>Aviso del Sistema:</strong> ${data.error || 'No se pudo procesar la solicitud.'}`,
         time: 'Ahora'
       })
     }
   } catch (err) {
     messages.value.push({
       sender: 'bot',
-      text: `❌ <strong>Error de Conexión:</strong> No se pudo comunicar con el servidor backend ni con el modelo Ollama.`,
+      text: `❌ Error al conectar con el servidor.`,
       time: 'Ahora'
     })
   } finally {
@@ -417,9 +445,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (recognition) {
-    recognition.stop()
-  }
+  if (recognition) recognition.stop()
 })
 </script>
 
@@ -616,18 +642,112 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.telemetry-row {
-  margin-top: 0.25rem !important;
-  padding-top: 0.35rem !important;
-  border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
+/* MATCHES FOR DAMNIFICADOS */
+.matches-box {
+  margin-top: 1rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 14px;
+  padding: 1.25rem;
 }
 
-.telemetry-info {
-  font-size: 0.72rem;
-  color: #38bdf8;
+.match-box-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #34d399;
+  margin-bottom: 0.25rem;
+}
+
+.match-box-sub {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.95rem;
+}
+
+.matches-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.match-result-card {
+  display: flex;
+  gap: 1rem;
+  background: rgba(7, 10, 19, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 12px;
+  padding: 0.85rem;
+  align-items: center;
+}
+
+.match-candidate-img {
+  width: 75px;
+  height: 75px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid #6366f1;
+}
+
+.match-candidate-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.match-top-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.match-name {
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.match-uuid {
   font-family: monospace;
+  font-size: 0.75rem;
+  color: #38bdf8;
 }
 
+.match-distance {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.btn-verify-match {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #818cf8;
+}
+
+/* NO MATCHES ACTIVE SEARCH BOX */
+.no-matches-box {
+  margin-top: 1rem;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 14px;
+  padding: 1.15rem;
+}
+
+.no-match-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #a5b4fc;
+  margin-bottom: 0.3rem;
+}
+
+.no-match-text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* QR CREDENTIAL CARD */
 .qr-credential-card {
   margin-top: 1rem;
   background: rgba(16, 185, 129, 0.08);
@@ -670,46 +790,8 @@ onUnmounted(() => {
   color: #818cf8;
 }
 
-.matches-box {
-  margin-top: 1rem;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: 14px;
-  padding: 1.15rem;
-}
-
-.match-box-title {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #fbbf24;
-  margin-bottom: 0.25rem;
-}
-
-.match-box-sub {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.75rem;
-}
-
-.match-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.45rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.btn-goto-matches {
-  display: inline-block;
-  margin-top: 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #fbbf24;
-}
-
 .quick-cards-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   padding: 0 1.5rem 1rem 1.5rem;
 }
