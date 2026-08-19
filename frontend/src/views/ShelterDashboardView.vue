@@ -58,7 +58,7 @@
             :class="['pet-card-row', selectedPet?.id === p.id ? 'active-pet' : '']"
             @click="selectPet(p)"
           >
-            <img :src="p.photo_url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=200'" class="pet-avatar" />
+            <img :src="p.photo_url || defaultPhoto" class="pet-avatar" />
             <div class="pet-card-info">
               <div class="pet-card-top">
                 <span class="pet-name">{{ getCleanPetName(p) }}</span>
@@ -91,7 +91,10 @@
         <div class="dossier-body">
           <!-- PET PROFILE SUMMARY -->
           <div class="profile-hero">
-            <img :src="selectedPet.photo_url || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600'" class="hero-avatar" />
+            <div class="hero-avatar-wrap">
+              <img :src="selectedPet.photo_url || defaultPhoto" class="hero-avatar" />
+              <button class="btn-change-photo-mini" @click="openEditModal(selectedPet)" title="Cambiar foto">📷</button>
+            </div>
             <div class="hero-info">
               <div class="hero-title-row">
                 <h2>{{ getCleanPetName(selectedPet) }}</h2>
@@ -167,14 +170,14 @@
       </div>
     </div>
 
-    <!-- MODAL: EDITAR FICHA DE LA MASCOTA -->
+    <!-- MODAL: EDITAR FICHA DE LA MASCOTA Y FOTO -->
     <div v-if="isEditModalOpen" class="modal-overlay" @click.self="isEditModalOpen = false">
       <div class="modal-card glass-card">
         <div class="modal-header">
           <div class="modal-title-group">
             <div class="modal-icon">✏️</div>
             <div>
-              <h3>Editar Ficha de Mascota</h3>
+              <h3>Editar Ficha y Foto de Mascota</h3>
               <p class="modal-sub">Identificador Oficial: <strong>{{ editForm.uuid }}</strong></p>
             </div>
           </div>
@@ -182,6 +185,34 @@
         </div>
 
         <form @submit.prevent="savePetEdit" class="edit-pet-form">
+          <!-- PHOTO UPLOAD & PREVIEW SECTION -->
+          <div class="photo-edit-section">
+            <div class="photo-preview-wrap">
+              <img :src="editForm.photo_url || defaultPhoto" class="modal-photo-preview" />
+            </div>
+            <div class="photo-controls">
+              <label class="photo-upload-btn">
+                <span>📁 Seleccionar Foto desde tu Dispositivo</span>
+                <input type="file" @change="handleFileUpload" accept="image/*" style="display:none;" />
+              </label>
+              <div class="photo-url-input-row">
+                <input 
+                  type="text" 
+                  v-model="editForm.photo_url" 
+                  placeholder="O pega una URL de imagen (https://...)" 
+                  class="input-dark" 
+                />
+              </div>
+              <div class="preset-photos-row">
+                <span class="preset-label">Fotos de Campaña:</span>
+                <button type="button" class="btn-preset-photo" @click="setPresetPhoto('dog_black')">🐶 Negro</button>
+                <button type="button" class="btn-preset-photo" @click="setPresetPhoto('dog_golden')">🐕 Rubio</button>
+                <button type="button" class="btn-preset-photo" @click="setPresetPhoto('dog_puppy')">🐾 Mestizo</button>
+                <button type="button" class="btn-preset-photo" @click="setPresetPhoto('cat')">🐱 Gato</button>
+              </div>
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="form-group full">
               <label>Nombre / Identificador Provisorio:</label>
@@ -255,6 +286,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
+const defaultPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
+
 const pets = ref([])
 const selectedPet = ref(null)
 const qrScanConfirmed = ref(false)
@@ -278,7 +311,8 @@ const editForm = ref({
   primary_color: '',
   status: 'in_shelter',
   location_address: '',
-  distinctive_marks: ''
+  distinctive_marks: '',
+  photo_url: ''
 })
 
 const getCleanPetName = (p) => {
@@ -355,9 +389,40 @@ const openEditModal = (pet) => {
     primary_color: (pet.primary_color && pet.primary_color !== 'string') ? pet.primary_color : 'Negro y Blanco',
     status: pet.status || 'in_shelter',
     location_address: pet.location_address || 'Caracas / Zona de Emergencia',
-    distinctive_marks: pet.distinctive_marks || ''
+    distinctive_marks: (pet.distinctive_marks && !pet.distinctive_marks.includes('string')) ? pet.distinctive_marks : 'Mascota rescatada en zona de desastre',
+    photo_url: pet.photo_url || defaultPhoto
   }
   isEditModalOpen.value = true
+}
+
+const handleFileUpload = (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    if (event.target?.result) {
+      editForm.value.photo_url = event.target.result
+    }
+  }
+  reader.readAsDataURL(file)
+}
+
+const setPresetPhoto = (type) => {
+  switch(type) {
+    case 'dog_black':
+      editForm.value.photo_url = 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&auto=format&fit=crop&q=80'
+      break
+    case 'dog_golden':
+      editForm.value.photo_url = 'https://images.unsplash.com/photo-1558788353-f76d92427f16?w=600&auto=format&fit=crop&q=80'
+      break
+    case 'dog_puppy':
+      editForm.value.photo_url = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
+      break
+    case 'cat':
+      editForm.value.photo_url = 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=80'
+      break
+  }
 }
 
 const savePetEdit = async () => {
@@ -378,13 +443,14 @@ const savePetEdit = async () => {
         primary_color: editForm.value.primary_color,
         status: editForm.value.status,
         location_address: editForm.value.location_address,
-        distinctive_marks: editForm.value.distinctive_marks
+        distinctive_marks: editForm.value.distinctive_marks,
+        photo_url: editForm.value.photo_url
       })
     })
 
     const data = await res.json()
     if (data.success) {
-      editSuccessMsg.value = '¡Ficha de la mascota actualizada exitosamente!'
+      editSuccessMsg.value = '¡Ficha y foto de la mascota actualizadas exitosamente!'
       
       // Actualización reactiva instantánea
       if (selectedPet.value && selectedPet.value.id === editForm.value.id) {
@@ -829,12 +895,33 @@ onMounted(() => {
   border-radius: var(--radius-md);
 }
 
+.hero-avatar-wrap {
+  position: relative;
+}
+
 .hero-avatar {
   width: 90px;
   height: 90px;
   border-radius: 14px;
   object-fit: cover;
   border: 2px solid #6366f1;
+}
+
+.btn-change-photo-mini {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: #6366f1;
+  border: 2px solid #0d1322;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: white;
 }
 
 .hero-title-row {
@@ -1019,7 +1106,9 @@ onMounted(() => {
 
 .modal-card {
   width: 100%;
-  max-width: 600px;
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: #0d1322;
   border: 1px solid rgba(99, 102, 241, 0.45);
   padding: 1.85rem;
@@ -1080,7 +1169,91 @@ onMounted(() => {
 .edit-pet-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.15rem;
+}
+
+/* PHOTO EDIT SECTION */
+.photo-edit-section {
+  display: flex;
+  gap: 1.25rem;
+  background: rgba(7, 10, 19, 0.6);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  align-items: center;
+}
+
+.photo-preview-wrap {
+  width: 100px;
+  height: 100px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid #6366f1;
+  flex-shrink: 0;
+}
+
+.modal-photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.photo-upload-btn {
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.photo-upload-btn:hover {
+  background: rgba(99, 102, 241, 0.4);
+  color: white;
+}
+
+.photo-url-input-row input {
+  width: 100%;
+  font-size: 0.78rem;
+}
+
+.preset-photos-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.preset-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.btn-preset-photo {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-preset-photo:hover {
+  background: rgba(99, 102, 241, 0.25);
+  color: white;
+  border-color: #6366f1;
 }
 
 .form-grid {
@@ -1113,7 +1286,7 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .btn-cancel {
