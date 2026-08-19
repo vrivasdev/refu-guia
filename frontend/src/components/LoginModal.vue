@@ -9,15 +9,8 @@
             <p class="modal-sub">Acceso con Control de Roles (RBAC)</p>
           </div>
         </div>
-        <!-- ONLY BUTTON THAT CLOSES THE MODAL -->
+        <!-- CLOSE BUTTON (X) -->
         <button class="btn-close-modal" @click="close" title="Cerrar ventana">✕</button>
-      </div>
-
-      <!-- SUCCESS NOTICE IF LOGGED IN -->
-      <div v-if="successMsg" class="success-banner-box">
-        <div class="success-banner-title">🎉 ¡Autenticación Exitosa!</div>
-        <p class="success-banner-desc">{{ successMsg }}</p>
-        <p class="success-banner-action">Haz clic en la <strong>X</strong> de la esquina superior derecha para continuar a la plataforma.</p>
       </div>
 
       <!-- DEMO 1-CLICK QUICK LOGINS -->
@@ -97,29 +90,27 @@ const email = ref('carmen.refugio@refuguia.org')
 const password = ref('Password123!')
 const loading = ref(false)
 const errorMsg = ref('')
-const successMsg = ref('')
 
 const close = () => {
   errorMsg.value = ''
-  successMsg.value = ''
   emit('close')
 }
 
-const quickLogin = (presetEmail) => {
+const quickLogin = async (presetEmail) => {
   email.value = presetEmail
   password.value = 'Password123!'
-  handleLogin()
+  await handleLogin()
 }
 
 const handleLogin = async () => {
   loading.value = true
   errorMsg.value = ''
-  successMsg.value = ''
 
   try {
     const res = await login(email.value, password.value)
     if (res.success) {
-      successMsg.value = `Sesión iniciada como ${res.user.name} (${res.user.role_label}).`
+      // Cierra la modal inmediatamente al iniciar sesión
+      close()
     } else {
       errorMsg.value = res.error || 'Credenciales inválidas.'
     }
@@ -213,33 +204,6 @@ const handleLogin = async () => {
   background: rgba(244, 63, 94, 0.4);
   border-color: #fb7185;
   transform: scale(1.1);
-}
-
-.success-banner-box {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  margin-bottom: 1.25rem;
-  text-align: center;
-}
-
-.success-banner-title {
-  color: #34d399;
-  font-weight: 800;
-  font-size: 0.95rem;
-  margin-bottom: 0.25rem;
-}
-
-.success-banner-desc {
-  color: #e2e8f0;
-  font-size: 0.82rem;
-  margin-bottom: 0.4rem;
-}
-
-.success-banner-action {
-  font-size: 0.76rem;
-  color: #a7f3d0;
 }
 
 .demo-logins-box {
