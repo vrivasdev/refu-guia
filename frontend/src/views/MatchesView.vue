@@ -78,10 +78,10 @@
         <div class="human-actions-bar" v-if="m.status !== 'confirmed_by_human' && m.status !== 'rejected_by_human'">
           <p class="action-note"><strong>Validación Humana:</strong> El rescatista o coordinador valida la documentación y collar QR para autorizar la reunificación.</p>
           <div class="btn-group">
-            <button class="btn-gradient btn-confirm" @click="confirmMatch(m.id)">
+            <button class="btn-gradient btn-confirm" @click="handleConfirmMatch(m)">
               ✅ Confirmar Reencuentro Familiar
             </button>
-            <button class="btn-reject" @click="rejectMatch(m.id)">
+            <button class="btn-reject" @click="handleRejectMatch(m)">
               ❌ Descartar Match
             </button>
           </div>
@@ -106,6 +106,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { showSuccess, showError, showConfirm } from '../utils/alerts'
 
 const route = useRoute()
 const defaultDogPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&auto=format&fit=crop&q=80'
@@ -144,29 +145,47 @@ const fetchMatches = async () => {
   }
 }
 
-const confirmMatch = async (id) => {
+const handleConfirmMatch = async (match) => {
+  const isConfirmed = await showConfirm(
+    '¿Confirmar Reencuentro Familiar?',
+    `¿Deseas formalizar la entrega de <strong>${match.lost_pet?.name || 'la mascota'}</strong> a su familia tutora?<br><br>Se actualizará el estado legal a <em>Reunificada</em> en el sistema.`,
+    'Sí, Confirmar Reunificación',
+    'Cancelar'
+  )
+
+  if (!isConfirmed) return
+
   try {
-    const res = await fetch(`http://localhost:8000/api/matches/${id}/confirm`, { method: 'POST' })
+    const res = await fetch(`http://localhost:8000/api/matches/${match.id}/confirm`, { method: 'POST' })
     const data = await res.json()
-    alert(data.message || '¡Reencuentro confirmado!')
+    match.status = 'confirmed_by_human'
+    showSuccess('¡Reencuentro Exitoso!', data.message || 'La mascota ha sido reunificada con su familia tutora.')
     fetchMatches()
   } catch (e) {
-    const target = matches.value.find(m => m.id === id)
-    if (target) target.status = 'confirmed_by_human'
-    alert('¡Reencuentro confirmado!')
+    match.status = 'confirmed_by_human'
+    showSuccess('¡Reencuentro Exitoso!', 'La mascota ha sido reunificada formalmente.')
   }
 }
 
-const rejectMatch = async (id) => {
+const handleRejectMatch = async (match) => {
+  const isConfirmed = await showConfirm(
+    '¿Descartar Coincidencia?',
+    '¿Estás seguro de descartar este match por discrepancia de rasgos visuales o fenotípicos?',
+    'Sí, Descartar',
+    'Volver'
+  )
+
+  if (!isConfirmed) return
+
   try {
-    const res = await fetch(`http://localhost:8000/api/matches/${id}/reject`, { method: 'POST' })
+    const res = await fetch(`http://localhost:8000/api/matches/${match.id}/reject`, { method: 'POST' })
     const data = await res.json()
-    alert(data.message || 'Match descartado.')
+    match.status = 'rejected_by_human'
+    showSuccess('Match Descartado', data.message || 'El registro ha sido actualizado.')
     fetchMatches()
   } catch (e) {
-    const target = matches.value.find(m => m.id === id)
-    if (target) target.status = 'rejected_by_human'
-    alert('Match descartado.')
+    match.status = 'rejected_by_human'
+    showSuccess('Match Descartado', 'El registro ha sido actualizado.')
   }
 }
 

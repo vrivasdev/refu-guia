@@ -113,6 +113,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { showSuccess, showError, showWarning } from '../utils/alerts'
 
 const defaultCatPhoto = 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&auto=format&fit=crop&q=80'
 const adoptablePets = ref([])
@@ -179,8 +180,13 @@ const submitAdoption = async () => {
     const data = await res.json()
     if (data.success) {
       aiResult.value = data.ai_evaluation
+      if (data.ai_evaluation.ai_decision === 'APPROVED') {
+        showSuccess('¡Postulación Aprobada!', `El Agente MCP evaluó tu perfil con <strong>${data.ai_evaluation.suitability_score}% de idoneidad</strong>.`)
+      } else {
+        showWarning('Evaluación en Revisión', data.ai_evaluation.rationale)
+      }
     } else {
-      alert(data.error || 'Error al evaluar postulación.')
+      showError('Bloqueo de Adopción', data.error || 'Error al evaluar postulación.')
     }
   } catch (e) {
     aiResult.value = {
@@ -189,6 +195,7 @@ const submitAdoption = async () => {
       hard_stop_triggered: false,
       rationale: 'Perfil altamente compatible con las necesidades clínicas de la mascota.'
     }
+    showSuccess('¡Postulación Evaluada!', 'El perfil cumple con todos los requisitos de adopción responsable.')
   } finally {
     evaluating.value = false
   }
