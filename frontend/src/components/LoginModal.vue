@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isOpen" class="modal-overlay" @click.self="close">
+  <div v-if="isOpen" class="modal-overlay">
     <div class="modal-card glass-card">
       <div class="modal-header">
         <div class="modal-title-group">
@@ -9,7 +9,15 @@
             <p class="modal-sub">Acceso con Control de Roles (RBAC)</p>
           </div>
         </div>
-        <button class="btn-close" @click="close">✕</button>
+        <!-- ONLY BUTTON THAT CLOSES THE MODAL -->
+        <button class="btn-close-modal" @click="close" title="Cerrar ventana">✕</button>
+      </div>
+
+      <!-- SUCCESS NOTICE IF LOGGED IN -->
+      <div v-if="successMsg" class="success-banner-box">
+        <div class="success-banner-title">🎉 ¡Autenticación Exitosa!</div>
+        <p class="success-banner-desc">{{ successMsg }}</p>
+        <p class="success-banner-action">Haz clic en la <strong>X</strong> de la esquina superior derecha para continuar a la plataforma.</p>
       </div>
 
       <!-- DEMO 1-CLICK QUICK LOGINS -->
@@ -65,7 +73,6 @@
         </div>
 
         <p v-if="errorMsg" class="err-text">❌ {{ errorMsg }}</p>
-        <p v-if="successMsg" class="success-text">✅ {{ successMsg }}</p>
 
         <button type="submit" class="btn-gradient btn-submit" :disabled="loading">
           {{ loading ? 'Autenticando...' : 'Iniciar Sesión' }}
@@ -112,17 +119,12 @@ const handleLogin = async () => {
   try {
     const res = await login(email.value, password.value)
     if (res.success) {
-      successMsg.value = `¡Bienvenido/a ${res.user.name} (${res.user.role_label})!`
-      setTimeout(() => {
-        close()
-      }, 700)
+      successMsg.value = `Sesión iniciada como ${res.user.name} (${res.user.role_label}).`
     } else {
       errorMsg.value = res.error || 'Credenciales inválidas.'
     }
   } catch (e) {
-    // Fallback simulation
-    successMsg.value = 'Sesión iniciada en modo demostración.'
-    setTimeout(close, 700)
+    errorMsg.value = 'Error al conectar con el servidor de autenticación.'
   } finally {
     loading.value = false
   }
@@ -136,9 +138,9 @@ const handleLogin = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  z-index: 2000;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(10px);
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -147,12 +149,13 @@ const handleLogin = async () => {
 
 .modal-card {
   width: 100%;
-  max-width: 520px;
-  background: #0f172a;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  padding: 1.75rem;
+  max-width: 530px;
+  background: #0d1322;
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  padding: 1.85rem;
   border-radius: var(--radius-lg);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.9);
+  position: relative;
 }
 
 .modal-header {
@@ -165,56 +168,90 @@ const handleLogin = async () => {
 .modal-title-group {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .modal-icon {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 12px;
   background: rgba(99, 102, 241, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
 }
 
 .modal-title-group h3 {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 800;
+  color: #fff;
 }
 
 .modal-sub {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   color: var(--text-muted);
 }
 
-.btn-close {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted);
+.btn-close-modal {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.btn-close:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+.btn-close-modal:hover {
+  background: rgba(244, 63, 94, 0.4);
+  border-color: #fb7185;
+  transform: scale(1.1);
+}
+
+.success-banner-box {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.success-banner-title {
+  color: #34d399;
+  font-weight: 800;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.success-banner-desc {
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+}
+
+.success-banner-action {
+  font-size: 0.76rem;
+  color: #a7f3d0;
 }
 
 .demo-logins-box {
   background: rgba(7, 10, 19, 0.7);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 1.1rem;
   margin-bottom: 1.25rem;
 }
 
 .demo-title {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #a5b4fc;
   margin-bottom: 0.75rem;
@@ -223,30 +260,31 @@ const handleLogin = async () => {
 .demo-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
+  gap: 0.65rem;
 }
 
 .btn-demo-role {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.75rem;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-main);
   text-align: left;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .btn-demo-role:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(99, 102, 241, 0.2);
   border-color: #6366f1;
   transform: translateY(-2px);
 }
 
 .role-icon {
-  font-size: 1.3rem;
+  font-size: 1.35rem;
 }
 
 .role-desc strong {
@@ -277,7 +315,7 @@ const handleLogin = async () => {
 
 .divider span {
   position: relative;
-  background: #0f172a;
+  background: #0d1322;
   padding: 0 10px;
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -304,5 +342,4 @@ const handleLogin = async () => {
 }
 
 .err-text { color: #fb7185; font-size: 0.8rem; }
-.success-text { color: #34d399; font-size: 0.8rem; font-weight: 700; }
 </style>
