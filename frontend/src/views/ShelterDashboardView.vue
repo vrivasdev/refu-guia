@@ -391,7 +391,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { showSuccess, showError, showWarning } from '../utils/alerts'
 
 const defaultPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
@@ -511,7 +511,17 @@ const resetAllFilters = () => {
   activeKpiFilter.value = 'all'
 }
 
-// REACTIVE FILTERED PETS LIST
+// HELPER PARA NORMALIZAR TEXTO (SIN ACENTOS NI CARACTERES ESPECIALES)
+const normalizeText = (str) => {
+  if (!str) return ''
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+// REACTIVE FILTERED PETS LIST (MULTI-TOKEN, INSENSITIVE & ACCENT-AGNOSTIC)
 const filteredPets = computed(() => {
   let result = [...pets.value]
 
@@ -522,7 +532,7 @@ const filteredPets = computed(() => {
     result = result.filter(p => p.clinical_records && p.clinical_records.length > 0)
   } else if (activeKpiFilter.value === 'critical') {
     result = result.filter(p => {
-      const marks = (p.distinctive_marks || '').toLowerCase()
+      const marks = normalizeText(p.distinctive_marks)
       return marks.includes('lastimada') || marks.includes('fractura') || marks.includes('trauma') || marks.includes('quemadura') || marks.includes('cojera')
     })
   }
@@ -541,21 +551,40 @@ const filteredPets = computed(() => {
     })
   }
 
-  // 4. Text Search Query (Title, Name, UUID, Location, Breed, Color)
+  // 4. Smart Multi-Token Search Query (Title, Clean Name, UUID, Location, Breed, Color, Species, Marks)
   if (searchQuery.value.trim() !== '') {
-    const q = searchQuery.value.toLowerCase().trim()
+    const rawTokens = searchQuery.value.trim().split(/\s+/).map(normalizeText).filter(Boolean)
+    
     result = result.filter(p => {
-      const name = (p.name || '').toLowerCase()
-      const uuid = (p.uuid || '').toLowerCase()
-      const loc = (p.location_address || '').toLowerCase()
-      const breed = (p.breed || '').toLowerCase()
-      const color = (p.primary_color || '').toLowerCase()
-      const marks = (p.distinctive_marks || '').toLowerCase()
-      return name.includes(q) || uuid.includes(q) || loc.includes(q) || breed.includes(q) || color.includes(q) || marks.includes(q)
+      const cleanName = normalizeText(getCleanPetName(p))
+      const rawName = normalizeText(p.name)
+      const uuid = normalizeText(p.uuid)
+      const loc = normalizeText(p.location_address)
+      const breed = normalizeText(p.breed)
+      const color = normalizeText(p.primary_color)
+      const species = normalizeText(p.species === 'canine' ? 'canino perro perro dog' : 'felino gato cat')
+      const marks = normalizeText(p.distinctive_marks)
+      const statusLbl = normalizeText(getStatusLabel(p.status))
+
+      const fullHaystack = `${cleanName} ${rawName} ${uuid} ${loc} ${breed} ${color} ${species} ${marks} ${statusLbl}`
+
+      // Todos los términos escritos deben coincidir (AND logic)
+      return rawTokens.every(token => fullHaystack.includes(token))
     })
   }
 
   return result
+})
+
+// Auto-seleccionar la primera mascota si la seleccionada actual no está en los resultados filtrados
+watch(filteredPets, (newFiltered) => {
+  if (newFiltered.length > 0) {
+    if (!selectedPet.value || !newFiltered.some(p => p.id === selectedPet.value.id)) {
+      selectedPet.value = newFiltered[0]
+    }
+  } else {
+    selectedPet.value = null
+  }
 })
 
 const fetchPets = async () => {
