@@ -4,7 +4,7 @@ import ShelterDashboardView from '../views/ShelterDashboardView.vue'
 import MatchesView from '../views/MatchesView.vue'
 import AdoptionPortalView from '../views/AdoptionPortalView.vue'
 import McpExplorerView from '../views/McpExplorerView.vue'
-import TerminalSlmView from '../views/TerminalSlmView.vue'
+import TerminalSlmView from '../views/LocalSlmTerminalView.vue'
 import { useAuth } from '../services/auth'
 import { showWarning } from '../utils/alerts'
 
