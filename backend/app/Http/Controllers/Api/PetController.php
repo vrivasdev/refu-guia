@@ -117,7 +117,7 @@ class PetController extends Controller
         $reportType = $request->report_type;
 
         // 1. Extracción SLM
-        $nlpData = $this->slm->extractPetEntities($rawText);
+        $nlpData = $this->slm->extractEntities($rawText);
 
         // 2. Embedding con Qwen 2.5
         $textToEmbed = "{$nlpData['species']} {$nlpData['breed']} {$nlpData['size']} {$nlpData['primary_color']} {$nlpData['trauma_observed']}";

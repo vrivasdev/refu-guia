@@ -84,6 +84,11 @@ class LocalSlmService
     /**
      * Extracción estricta de entidades vía SLM Qwen 2.5
      */
+    public function extractPetEntities(string $rawText): array
+    {
+        return $this->extractEntities($rawText);
+    }
+
     public function extractEntities(string $rawText): array
     {
         $systemPrompt = 'Extrae en JSON estricto: {"species":"canine"|"feline","breed":"string","size":"small"|"medium"|"large","primary_color":"string","secondary_color":"string","coat_pattern":"string","distinctive_marks":"string","trauma_observed":"string","location_extracted":"string"}. Sin explicaciones adicionales.';
