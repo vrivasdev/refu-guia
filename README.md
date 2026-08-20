@@ -1,142 +1,127 @@
 # RefuGuía 🐾
-### Sistema Inteligente de Reconocimiento, Gestión y Reubicación de Mascotas Post-Sismo
+### Sistema Integral Multi-Agente On-Premise con IA Local (SLM+VLM), Protocolo MCP y Trazabilidad Médica Inmutable Post-Sismo
 **Trabajo Final de Ciclo — Inteligencia Artificial Aplicada a Organizaciones**  
 *Universidad Tecnológica Nacional (UTN-FRBA) & EPIData*
 
 ---
 
-## 🔗 Links Obligatorios de Evaluación
+## 🔗 Enlaces y Entregables Oficiales
 
-| Recurso | URL Directa |
+| Entregable / Recurso | Enlace Directo |
 | :--- | :--- |
 | **Repositorio GitHub** | [https://github.com/vrivasdev/refu-guia](https://github.com/vrivasdev/refu-guia) |
-| **Aplicación Web en Producción** | [https://refuguia.org](https://refuguia.org) *(O entorno Docker local)* |
-| **Video de Demostración (< 3 min)** | [https://youtu.be/refuguia-demo-final](https://youtu.be/refuguia-demo-final) |
-| **Documento del Anteproyecto** | [Ver PDF Anteproyecto](doc/Sistema%20Inteligente%20de%20Reconocimiento,%20Gestión%20y%20Reubicación%20de%20Mascotas%20Post-Sismo.pdf) |
+| **Informe Técnico Final Oficial (PDF)** | [doc/INFORME_FINAL_REFUGUIA_PARTE2.pdf](doc/INFORME_FINAL_REFUGUIA_PARTE2.pdf) |
+| **Informe Técnico Final Editable (DOCX)** | [doc/INFORME_FINAL_REFUGUIA_PARTE2.docx](doc/INFORME_FINAL_REFUGUIA_PARTE2.docx) |
+| **Registro de Auditoría de Sesión Real (TXT)** | [doc/LOG_SESION_REAL_REFUGUIA.txt](doc/LOG_SESION_REAL_REFUGUIA.txt) |
+| **Guía de Pruebas Manuales por Roles (MD)** | [doc/GUIA_PRUEBAS_MANUALES_ROLES.md](doc/GUIA_PRUEBAS_MANUALES_ROLES.md) |
 
 ---
 
 ## 1. Presentación del Proyecto
-* **Autor / Integrante:** Víctor Rivas (Cohorte 2)
-* **Problema que Resuelve:** Tras los severos eventos sísmicos en Venezuela, miles de animales de compañía fueron desplazados, colapsando los refugios y dispersando reportes caóticos en redes sociales. RefuGuía centraliza, identifica mediante visión/NLP y empareja mascotas con sus familias originales de forma automatizada y offline.
-* **Público Objetivo:** Familias damnificadas, brigadas de rescatistas voluntarios, directores de refugios temporales y postulantes a adopción responsable.
+* **Autor / Integrante:** Víctor Rivas (Full-Cycle AI Engineer)
+* **Problema que Resuelve:** Tras desastres naturales como el sismo de Caracas (6.2 Mw), el colapso de las telecomunicaciones genera extravío masivo de mascotas, saturación de refugios en papel, falta de trazabilidad en fármacos críticos y ausencia de auditoría del período legal de 15 días antes de dar en adopción.
+* **Solución Implementada:** Plataforma 100% On-Premise y soberana con inferencia local dual (SLM Qwen 2.5 + VLM Moondream), búsqueda semántica K-NN en ChromaDB, servidor MCP 2026.1 con 6 Skills agénticas auditables en Markdown, inmutabilidad SHA-256 en tratamientos y generación de collares QR de campaña.
 
 ---
 
-## 2. Arquitectura del Sistema
+## 2. Arquitectura General y Flujo de Datos
 
 ```mermaid
 graph TD
-    subgraph Frontend [Vue.js 3 SPA - Vite]
-        UI_Chat[Chatbot Ciudadano Mobile-First]
-        UI_Dash[Dashboard Clínico de Refugios & QR]
-        UI_Match[Hub de Matches & Validación Humana]
-        UI_Adop[Portal de Adopción Responsable]
-        UI_MCP[Monitor de Ejecución MCP & Vector Search]
+    subgraph FRONTEND ["CAPA DE PRESENTACIÓN (Vue.js 3 + Vite)"]
+        UI["SPA Vue.js 3 + Vite + SweetAlert2"]
+        ROUTER["Vue Router con Guardias RBAC"]
+        USER_ACTORS["Usuarios: Dra. Carmen / Carlos Mendoza / María Fernández / Andrés Morales"]
     end
 
-    subgraph Backend [Laravel REST API - PHP 8.2 en Docker]
-        API_Router[Controladores REST / Rutas API]
-        
-        subgraph Capa_Agentes [Agentes Orquestadores SLM]
-            Agent_NLP[Agente NLP Ciudadano]
-            Agent_Match[Agente Matchmaker]
-            Agent_Triage[Agente Triaje y Adopción]
-            Agent_Learn[Agente de Retroalimentación]
-        end
-
-        subgraph Capa_MCP [Servidor MCP & Herramientas]
-            MCP_Server[MCP Server Protocol Controller]
-            Tool_Registry[MCP Tool Registry]
-            
-            subgraph Catalogo_Skills [Skills Ejecutables]
-                Skill_Vector[Skill: Búsqueda Vectorial ChromaDB + Geo]
-                Skill_QR[Skill: Generador Identidad & QR]
-                Skill_Grace[Skill: Validador 15 Días de Gracia]
-                Skill_Triage[Skill: Evaluador Reglas Adopción]
-            end
-        end
-
-        subgraph Dominio_Seguridad [Dominio y Ciberseguridad]
-            Sanitizer[Filtro Anti-Prompt Injection]
-            Auth_RBAC[Control de Acceso Basado en Roles]
-        end
+    subgraph BACKEND ["CAPA DE APLICACIÓN & NEGOCIO (Laravel 11 REST API)"]
+        MCP_SERVER["Servidor MCP 2026.1 (Model Context Protocol)"]
+        PET_CTRL["Controlador de Mascotas & Ingesta"]
+        CLINIC_CTRL["Auditor Clínico SHA-256 & Bloqueo QR"]
+        MATCH_CTRL["Motor de Reencuentro & Emparejamiento"]
     end
 
-    subgraph IA_Local [Entorno SLM & Embeddings Local]
-        Ollama[Ollama Server: qwen2.5:1.5b + nomic-embed-text]
+    subgraph AI_LOCAL ["CAPA DE INTELIGENCIA ARTIFICIAL LOCAL (100% On-Premise)"]
+        OLLAMA_SLM["SLM Qwen 2.5:1.5B (NLP, JSON, Embeddings)"]
+        OLLAMA_VLM["VLM Moondream:latest (Peritaje Visual de Píxeles)"]
+        CHROMA_DB["Base de Datos Vectorial ChromaDB v2"]
     end
 
-    subgraph Persistencia_Dual [Memoria Persistente Híbrida]
-        DB_Rel[(MySQL 8.0: Mascotas, Usuarios, Fichas Clínicas, Logs MCP)]
-        Vector_DB[(ChromaDB: Colecciones de Embeddings & Similitud Coseno)]
+    subgraph STORAGE ["CAPA DE PERSISTENCIA & MEMORIA"]
+        MYSQL_DB[("MySQL 8.0 Relacional")]
+        DISK_MD[("Skills Markdown .md")]
+        CHROMA_STORE[("Chroma Vectors Storage")]
     end
 
-    UI_Chat --> API_Router
-    UI_Dash --> API_Router
-    UI_Match --> API_Router
-    UI_Adop --> API_Router
-    UI_MCP --> API_Router
-
-    API_Router --> Sanitizer --> Capa_Agentes
-    Capa_Agentes <--> Ollama
-    Capa_Agentes --> MCP_Server
-    MCP_Server --> Tool_Registry
-    Tool_Registry --> Catalogo_Skills
-    Skill_Vector <--> Vector_DB
-    Catalogo_Skills <--> DB_Rel
+    USER_ACTORS --> UI
+    UI --> ROUTER
+    ROUTER --> PET_CTRL
+    ROUTER --> CLINIC_CTRL
+    ROUTER --> MATCH_CTRL
+    PET_CTRL --> MCP_SERVER
+    MATCH_CTRL --> MCP_SERVER
+    MCP_SERVER --> OLLAMA_SLM
+    MCP_SERVER --> OLLAMA_VLM
+    MCP_SERVER --> CHROMA_DB
+    PET_CTRL --> MYSQL_DB
+    CLINIC_CTRL --> MYSQL_DB
+    MCP_SERVER --> DISK_MD
+    CHROMA_DB --> CHROMA_STORE
 ```
 
 ---
 
-## 3. Stack Tecnológico
+## 3. Catálogo de Skills Agénticas MCP (Model Context Protocol 2026.1)
 
-| Componente | Tecnología / Herramienta | Por qué se eligió esta y no otra |
-| :--- | :--- | :--- |
-| **Frontend** | Vue.js 3 + Vite + CSS Vanilla Moderno | Reactividad ágil, bajo peso para carga en redes móviles inestables post-sismo y separación limpia de componentes. |
-| **Backend** | Laravel 10 (PHP 8.2) REST API | Robustez en reglas de negocio, ORM Eloquent para trazabilidad de datos y rapidez en construcción de controladores seguros. |
-| **Base de Datos Relacional** | MySQL 8.0 | Garantiza integridad transaccional, llaves foráneas y soporte ACID para expedientes clínicos y auditorías SHA-256. |
-| **Base de Datos Vectorial** | ChromaDB (Contenedor Docker) | Almacenamiento ágil de embeddings fenotípicos/semánticos y cálculo nativo de similitud del coseno sin costos de licencia. |
-| **Modelo de IA (SLM Local)** | Qwen 2.5 (1.5B) vía Ollama | Corre 100% offline en laptops de refugio con bajo consumo de RAM (~1.2GB), respetando la privacidad de los damnificados. |
-| **Protocolo de Integración** | Model Context Protocol (MCP) | Estandariza la invocación segura de Skills (herramientas) por parte del modelo SLM sin permitir acceso no controlado a la BD. |
-| **Contenerización** | Docker & Docker Compose | Aislamiento y reproducibilidad total del entorno en cualquier máquina con un solo comando. |
+El sistema implementa 6 Skills formales basadas en contratos Markdown (`storage/app/skills/*.md`):
 
----
-
-## 4. Evaluación UX/UI (5 Heurísticas de Nielsen)
-
-1. **Visibilidad del Estado del Sistema:** El usuario recibe feedback instantáneo en el chat con chips de *"Extrayendo entidades..."* y porcentajes de confianza en tiempo real.
-2. **Coincidencia con el Mundo Real:** Se utilizan términos clínicos habituales de veterinaria y conceptos de refugio accesibles (collar QR, período de gracia, reencuentro).
-3. **Control y Libertad del Usuario:** Los rescatistas y tutores pueden confirmar o descartar manualmente los emparejamientos propuestos por la IA (*Human-in-the-Loop*).
-4. **Prevención de Errores:** Bloqueo en frontend y backend de la administración de fármacos si no se ha confirmado el escaneo previo del código QR.
-5. **Diseño Estético y Minimalista:** Interfaz oscura adaptada para bajo consumo de batería y alta legibilidad en pantallas táctiles de campamentos.
+1. **`skill_extraer_entidades_nlp`** (*Agente_NLP_Ingesta*): Sanitiza prompts y extrae entidades fenotípicas/clínicas en JSON estricto vía Qwen 2.5 (1.5B).
+2. **`skill_peritaje_visual_moondream`** (*Agente_Peritaje_Visual_VLM*): Inspección y cotejo fotográfico píxel a píxel identificando manto, orejas y marcas distintivas con Moondream (1.4B).
+3. **`skill_calcular_similitud_vectorial`** (*Agente_Matchmaker*): Matriz híbrida de similitud (40% visual + 30% semántica + 30% distancia Haversine).
+4. **`skill_verificar_periodo_gracia`** (*Agente_Auditor_Legal*): Auditoría del período legal inamovible de 15 días continuos de búsqueda pública antes de la adopción.
+5. **`skill_evaluar_compatibilidad_adopcion`** (*Agente_Triaje_Adopcion*): Evaluación automática de solvencia e idoneidad habitacional para adoptantes.
+6. **`skill_generar_identidad_qr`** (*Agente_Trazabilidad_QR*): Generación de UUIDs inmutables y collares QR físicos imprimibles.
 
 ---
 
-## 5. Matriz de Ciberseguridad
+## 4. Roles y Flujo de Usuarios en el Sistema
 
-| Riesgo Identificado | Tipo (OWASP / Privacidad / Acceso) | Medida Implementada / Decisión Tomada |
-| :--- | :--- | :--- |
-| **Inyección de Prompt en SLM** | OWASP LLM01: Prompt Injection | `PromptSanitizerService` en Laravel filtra patrones maliciosos (`ignore instructions`, `bypass`, `system:`) antes de la inferencia. |
-| **Exposición de Secretos y Llaves** | Secretos en Código | Uso de variables `.env` protegidas e ignoradas en `.gitignore`; credenciales de DB aisladas en Docker. |
-| **Fuga de Datos de Damnificados** | Privacidad | Inferencia 100% Local con Ollama. Ningún dato sensible de las familias sale a servicios en la nube. |
-| **Administración Incorrecta de Medicinas** | Control de Acceso / Integridad | Bloqueo estricto (*Hard-Stop*) en endpoint clínico si no se valida el UUID del QR físico. |
+* 👩‍⚕️ **Dra. Carmen López (Coordinadora de Refugio):** Gestión de inventario, auditoría de fármacos con hash inmutable SHA-256 y confirmación de reencuentros.
+* 👷 **Carlos Mendoza (Rescatista de Campo):** Ingreso rápido de animales por voz/texto en zona de rescate e impresión de collares QR.
+* 👩 **María Fernández (Damnificada):** Reporte de búsqueda familiar con foto, recepción de coincidencias sugeridas y peritaje visual.
+* 👨 **Andrés Morales (Adoptante Responsable):** Exploración de catálogo habilitado (>15 días) y postulación con triaje de idoneidad IA.
 
 ---
 
-## 6. Despliegue Rápido con Docker
+## 5. Ciberseguridad y Trazabilidad Médica
+
+* **Anti-Prompt Injection:** Servicio `PromptSanitizerService` para bloquear ataques de inyección y Jailbreak en el SLM.
+* **Trazabilidad Médica SHA-256:** Encadenamiento criptográfico `hash_sha256 = sha256(prev_hash + payload)` en cada tratamiento administrado.
+* **Bloqueo Físico por QR:** Validación obligatoria del escaneo de collar (`qr_scanned = true`) antes de aplicar fármacos críticos.
+* **Zero Data Leakage:** Inferencia 100% On-Premise sin envío de datos privados a la nube comercial.
+
+---
+
+## 6. Despliegue Rápido On-Premise
 
 ```bash
-# 1. Clonar repositorio
+# 1. Clonar el repositorio
 git clone https://github.com/vrivasdev/refu-guia.git
 cd refu-guia
 
-# 2. Levantar todos los servicios en segundo plano
+# 2. Iniciar modelos IA en Ollama Local
+ollama run qwen2.5:1.5b
+ollama run moondream:latest
+
+# 3. Levantar la plataforma completa en Docker
 docker compose up -d --build
 
-# 3. Acceso a las aplicaciones:
-# - Frontend: http://localhost:5173
-# - Backend API: http://localhost:8000/api/health
-# - ChromaDB Vectorial: http://localhost:8001
-# - MySQL: localhost:3306
+# 4. URLs de acceso local:
+# - Frontend SPA: http://localhost:5173
+# - Backend API:  http://localhost:8000/api/health
+# - ChromaDB:     http://localhost:8001
+# - MySQL:        localhost:3306
 ```
+
+---
+*UTN-FRBA & EPIData — Programa de Inteligencia Artificial Aplicada a Organizaciones*
