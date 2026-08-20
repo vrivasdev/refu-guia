@@ -4,45 +4,61 @@ import ShelterDashboardView from '../views/ShelterDashboardView.vue'
 import MatchesView from '../views/MatchesView.vue'
 import AdoptionPortalView from '../views/AdoptionPortalView.vue'
 import McpExplorerView from '../views/McpExplorerView.vue'
-import LocalSlmTerminalView from '../views/LocalSlmTerminalView.vue'
+import TerminalSlmView from '../views/TerminalSlmView.vue'
+import { useAuth } from '../services/auth'
 import { showWarning } from '../utils/alerts'
 
 const routes = [
   {
     path: '/',
-    name: 'chat',
+    name: 'citizen-chat',
     component: CitizenChatView,
-    meta: { title: 'Chat Ciudadano', roles: ['citizen', 'rescuer', 'shelter_admin', 'adopter'] }
+    meta: { title: 'Chat Ciudadano - RefuGuía' }
   },
   {
     path: '/refugios',
-    name: 'shelters',
+    name: 'shelter-dashboard',
     component: ShelterDashboardView,
-    meta: { title: 'Inventario de Refugios', roles: ['shelter_admin', 'rescuer'] }
+    meta: { 
+      title: 'Refugios & QR - RefuGuía',
+      requiredRoles: ['shelter_admin', 'rescuer']
+    }
   },
   {
     path: '/matches',
     name: 'matches',
     component: MatchesView,
-    meta: { title: 'Matchmaker Hub', roles: ['shelter_admin', 'rescuer', 'citizen'] }
+    meta: { 
+      title: 'Centro de Reencuentro - RefuGuía',
+      requiredRoles: ['shelter_admin', 'rescuer', 'citizen']
+    }
   },
   {
     path: '/adopcion',
-    name: 'adoption',
+    name: 'adoption-portal',
     component: AdoptionPortalView,
-    meta: { title: 'Portal de Adopción', roles: ['citizen', 'adopter', 'shelter_admin'] }
+    meta: { 
+      title: 'Portal de Adopción - RefuGuía',
+      requiredRoles: ['shelter_admin', 'citizen', 'adopter']
+    }
   },
   {
     path: '/mcp-explorer',
     name: 'mcp-explorer',
     component: McpExplorerView,
-    meta: { title: 'Explorador MCP', roles: ['shelter_admin'] }
+    meta: { 
+      title: 'MCP & Skills - RefuGuía',
+      requiredRoles: ['shelter_admin']
+    }
   },
   {
     path: '/terminal-slm',
     name: 'terminal-slm',
-    component: LocalSlmTerminalView,
-    meta: { title: 'Diagnóstico SLM Local', roles: ['shelter_admin'] }
+    component: TerminalSlmView,
+    meta: { 
+      title: 'Terminal SLM Local - RefuGuía',
+      requiredRoles: ['shelter_admin']
+    }
   }
 ]
 
@@ -52,26 +68,23 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const saved = localStorage.getItem('refuguia_user')
-  let user = null
-  try {
-    user = saved ? JSON.parse(saved) : null
-  } catch (e) {}
-
-  if (to.meta && to.meta.roles) {
-    if (!user) {
+  const { currentUser, hasRole } = useAuth()
+  
+  if (to.meta.requiredRoles) {
+    if (!currentUser.value) {
       showWarning(
         'Acceso Restringido',
-        `Debes iniciar sesión con un rol autorizado (<em>${to.meta.roles.join(', ')}</em>) para acceder a <strong>${to.meta.title}</strong>.`
+        'Debes iniciar sesión con las credenciales correspondientes para acceder a esta área.'
       )
       return next('/')
     }
-    if (!to.meta.roles.includes(user.role)) {
+
+    if (!hasRole(to.meta.requiredRoles)) {
       showWarning(
         'Permisos Insuficientes',
-        `Tu rol actual (<em>${user.role}</em>) no tiene acceso a <strong>${to.meta.title}</strong>. Sección reservada para: <em>${to.meta.roles.join(', ')}</em>.`
+        `Tu rol actual (<em>${currentUser.value.role}</em>) no tiene acceso a <strong>${to.meta.title.split(' - ')[0]}</strong>.`
       )
-      return next(from.path || '/')
+      return next('/')
     }
   }
 

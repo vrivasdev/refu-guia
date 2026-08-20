@@ -16,15 +16,15 @@
           </div>
         </router-link>
 
-        <!-- DYNAMIC NAV MENU ACCORDING TO ROLE -->
+        <!-- DYNAMIC NAV MENU STRICTLY FILTERED BY ROLE -->
         <nav class="nav-menu">
-          <!-- CHAT CIUDADANO -->
+          <!-- CHAT CIUDADANO: Visible para todos -->
           <router-link to="/" class="nav-pill" active-class="nav-pill-active">
             <span class="pill-icon">💬</span>
             <span class="pill-label">Chat Ciudadano</span>
           </router-link>
 
-          <!-- REFUGIOS & QR: shelter_admin y rescuer -->
+          <!-- REFUGIOS & QR: Solo Coordinadora y Rescatista -->
           <router-link 
             v-if="hasRole(['shelter_admin', 'rescuer'])" 
             to="/refugios" 
@@ -35,7 +35,7 @@
             <span class="pill-label">Refugios & QR</span>
           </router-link>
 
-          <!-- MATCHMAKER HUB: shelter_admin, rescuer, citizen -->
+          <!-- CENTRO DE REENCUENTRO (Cotejo Vectorial): Coordinadora, Rescatista, Damnificada -->
           <router-link 
             v-if="hasRole(['shelter_admin', 'rescuer', 'citizen'])" 
             to="/matches" 
@@ -43,16 +43,21 @@
             active-class="nav-pill-active"
           >
             <span class="pill-icon">⚡</span>
-            <span class="pill-label">Matchmaker Hub</span>
+            <span class="pill-label">Centro de Reencuentro</span>
           </router-link>
 
-          <!-- ADOPCION: publico, adopter, citizen, shelter_admin -->
-          <router-link to="/adopcion" class="nav-pill" active-class="nav-pill-active">
+          <!-- PORTAL DE ADOPCIÓN: Coordinadora, Damnificada, Adoptante (Oculto para Rescatista) -->
+          <router-link 
+            v-if="hasRole(['shelter_admin', 'citizen', 'adopter'])" 
+            to="/adopcion" 
+            class="nav-pill" 
+            active-class="nav-pill-active"
+          >
             <span class="pill-icon">❤️</span>
             <span class="pill-label">Adopción (15d)</span>
           </router-link>
 
-          <!-- MCP & SKILLS: EXCLUSIVO COORDINADORA / SHELTER_ADMIN -->
+          <!-- MCP & SKILLS: EXCLUSIVO COORDINADORA -->
           <router-link 
             v-if="hasRole('shelter_admin')" 
             to="/mcp-explorer" 
@@ -63,7 +68,7 @@
             <span class="pill-label">MCP & Skills</span>
           </router-link>
 
-          <!-- SLM LOCAL TERMINAL: EXCLUSIVO COORDINADORA / SHELTER_ADMIN -->
+          <!-- SLM LOCAL: EXCLUSIVO COORDINADORA -->
           <router-link 
             v-if="hasRole('shelter_admin')" 
             to="/terminal-slm" 
@@ -174,7 +179,7 @@
 
     <!-- ROLE RESTRICTION NOTICE BANNER IF GUEST -->
     <div v-if="!currentUser" class="role-hint-banner">
-      <span>💡 <strong>Modo Visitante:</strong> Inicia sesión con el rol de <strong>Coordinadora de Refugio</strong> para habilitar las secciones técnicas avanzadas (<em>MCP & Skills</em> y <em>SLM Local</em>).</span>
+      <span>💡 <strong>Modo Visitante:</strong> Inicia sesión con el rol de <strong>Coordinadora de Refugio</strong> para habilitar las herramientas avanzadas.</span>
       <button class="btn-banner-login" @click="showLoginModal = true">Cambiar de Rol</button>
     </div>
 
@@ -187,7 +192,7 @@
     <footer class="footer">
       <div class="footer-inner">
         <div>
-          <strong>RefuGuía</strong> — Proyecto Final IA Aplicada a Organizaciones (UTN-FRBA & EPIData)
+          <strong>RefuGuía</strong> — Sistema de Respuesta Humanitaria y Animal Post-Sismo (UTN-FRBA & EPIData)
         </div>
         <div class="footer-badges">
           <span class="badge badge-primary">100% IA Local (SLM)</span>
@@ -269,13 +274,11 @@ const switchPersona = async (persona) => {
 
   isUserMenuOpen.value = false
 
-  // 1. Intentar autenticación formal en API
   const res = await login(persona.email, persona.password)
   
   if (res.success) {
     showToast(`Sesión cambiada a: ${persona.name}`, 'success')
   } else {
-    // 2. Si hay algún desfase de red, asignar directamente la sesión
     setDirectUser({
       name: persona.name,
       email: persona.email,
@@ -285,13 +288,20 @@ const switchPersona = async (persona) => {
     showToast(`Sesión cambiada a: ${persona.name}`, 'success')
   }
 
-  // Redirigir a vista contextual si la ruta actual no es permitida
-  if (persona.role === 'citizen' && (router.currentRoute.value.path === '/refugios' || router.currentRoute.value.path === '/terminal-slm' || router.currentRoute.value.path === '/mcp-explorer')) {
-    router.push('/')
-  } else if (persona.role === 'rescuer' && (router.currentRoute.value.path === '/terminal-slm' || router.currentRoute.value.path === '/mcp-explorer')) {
-    router.push('/refugios')
-  } else if (persona.role === 'adopter' && (router.currentRoute.value.path === '/refugios' || router.currentRoute.value.path === '/terminal-slm' || router.currentRoute.value.path === '/mcp-explorer')) {
-    router.push('/adopcion')
+  // Redirección inteligente según permisos del nuevo rol
+  const currentPath = router.currentRoute.value.path
+  if (persona.role === 'citizen') {
+    if (currentPath === '/refugios' || currentPath === '/terminal-slm' || currentPath === '/mcp-explorer') {
+      router.push('/')
+    }
+  } else if (persona.role === 'rescuer') {
+    if (currentPath === '/adopcion' || currentPath === '/terminal-slm' || currentPath === '/mcp-explorer') {
+      router.push('/refugios')
+    }
+  } else if (persona.role === 'adopter') {
+    if (currentPath === '/refugios' || currentPath === '/matches' || currentPath === '/terminal-slm' || currentPath === '/mcp-explorer') {
+      router.push('/adopcion')
+    }
   }
 }
 
@@ -451,9 +461,7 @@ const getRoleFullTitle = (role) => {
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
 }
 
-/* ========================================================= */
-/* SENIOR USER ACCOUNT TRIGGER BUTTON                        */
-/* ========================================================= */
+/* USER ACCOUNT TRIGGER BUTTON */
 .user-account-wrapper {
   position: relative;
 }
@@ -587,9 +595,7 @@ const getRoleFullTitle = (role) => {
   height: 14px;
 }
 
-/* ========================================================= */
-/* SENIOR UX/UI USER POPOVER DROPDOWN                        */
-/* ========================================================= */
+/* POPOVER DROPDOWN */
 .user-dropdown-popover {
   position: absolute;
   top: calc(100% + 10px);
@@ -604,7 +610,6 @@ const getRoleFullTitle = (role) => {
   z-index: 1500;
 }
 
-/* TRANSITION ANIMATIONS */
 .dropdown-anim-enter-active, .dropdown-anim-leave-active {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -671,7 +676,6 @@ const getRoleFullTitle = (role) => {
   margin: 0.75rem 0;
 }
 
-/* PERSONA SWITCHER */
 .switcher-section {
   display: flex;
   flex-direction: column;
