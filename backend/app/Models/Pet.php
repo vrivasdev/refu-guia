@@ -11,16 +11,16 @@ class Pet extends Model
 
     protected $fillable = [
         'uuid',
-        'report_type', // 'lost', 'found'
+        'report_type',
         'name',
-        'species',     // 'canine', 'feline', 'other'
+        'species',
         'breed',
-        'size',        // 'small', 'medium', 'large'
+        'size',
         'primary_color',
         'secondary_color',
         'coat_pattern',
         'distinctive_marks',
-        'status',      // 'lost', 'in_shelter', 'reunified', 'adoptable', 'adopted'
+        'status',
         'photo_url',
         'latitude',
         'longitude',
@@ -50,5 +50,10 @@ class Pet extends Model
     public function matchLogs()
     {
         return $this->hasMany(MatchLog::class, 'found_pet_id');
+    }
+
+    public function adoptionApplications()
+    {
+        return $this->hasMany(AdoptionApplication::class);
     }
 }

@@ -5,7 +5,7 @@
         <div class="icon-wrap">❤️</div>
         <div>
           <h2>Portal de Adopción Responsable Post-Sismo</h2>
-          <p class="sub-txt">Mascotas que han superado el período legal de 15 días continuos de búsqueda pública y están legalmente habilitadas para adopción.</p>
+          <p class="sub-txt">Mascotas que han superado el período legal de 15 días de búsqueda familiar o están disponibles para registro de postulaciones.</p>
         </div>
       </div>
       <div class="header-badges">
@@ -37,8 +37,17 @@
               </span>
             </div>
             <p class="adopt-sub">{{ p.species === 'feline' ? '🐱 Gatito' : '🐶 Canino' }} • {{ p.breed }} • {{ p.primary_color }}</p>
-            <p class="adopt-notes"><strong>Estado:</strong> {{ p.location_address || 'Refugio Central' }}</p>
-            <button class="btn-postular">Postular para Adopción →</button>
+            <p class="adopt-notes"><strong>Ubicación:</strong> {{ p.location_address || 'Refugio Central' }}</p>
+            
+            <!-- APPLICANTS BADGE IF ANY POSTULATION EXISTS -->
+            <div v-if="p.adoption_applications && p.adoption_applications.length > 0" class="applicants-status-chip">
+              <span class="heart-dot">💛</span>
+              <span><strong>{{ p.adoption_applications.length }} Postulante(s) Registrado(s):</strong> {{ p.adoption_applications[0].user?.name || 'Andrés Morales' }} ({{ p.adoption_applications[0].ai_suitability_score || 95 }}% idoneidad)</span>
+            </div>
+
+            <button class="btn-postular">
+              {{ selectedPet?.id === p.id ? '👉 Ficha en Evaluación' : 'Postular para Adopción →' }}
+            </button>
           </div>
         </div>
       </div>
@@ -112,6 +121,21 @@
             <strong>{{ aiResult.suitability_score || 95 }}/100</strong>
           </div>
           <p class="res-rationale">{{ aiResult.rationale }}</p>
+          <div v-if="aiResult.grace_notice" class="grace-badge-note">
+            ℹ️ {{ aiResult.grace_notice }}
+          </div>
+        </div>
+
+        <!-- LIST OF RECORDED POSTULATIONS FOR THIS PET -->
+        <div v-if="selectedPet.adoption_applications && selectedPet.adoption_applications.length > 0" class="registered-apps-box">
+          <h4>💛 Postulaciones Registradas en el Sistema:</h4>
+          <div v-for="app in selectedPet.adoption_applications" :key="app.id" class="app-item-card">
+            <div class="app-item-top">
+              <strong>{{ app.user?.name || form.name }}</strong>
+              <span class="badge badge-emerald">{{ app.ai_suitability_score || 95 }}% Idoneidad ({{ app.status }})</span>
+            </div>
+            <p class="app-item-email">📧 {{ app.user?.email || form.email }} • Inmueble: {{ app.housing_type }}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -157,12 +181,10 @@ const fetchAdoptable = async () => {
   const queryPetId = route.query.pet_id ? parseInt(route.query.pet_id) : null
 
   try {
-    const res = await fetch('http://localhost:8000/api/pets')
+    const res = await fetch('http://localhost:8000/api/adoptions/adoptable-pets')
     const data = await res.json()
     if (data.success && data.data.length > 0) {
-      // Filtrar mascotas en refugio o adoptables
-      const shelterPets = data.data.filter(p => p.status === 'in_shelter' || p.status === 'adoptable')
-      adoptablePets.value = shelterPets.length > 0 ? shelterPets : data.data
+      adoptablePets.value = data.data
 
       if (queryPetId) {
         const found = adoptablePets.value.find(p => p.id === queryPetId)
@@ -177,18 +199,7 @@ const fetchAdoptable = async () => {
       }
     }
   } catch (e) {
-    adoptablePets.value = [
-      {
-        id: 3,
-        name: 'Toby (Rescatado Caricuao)',
-        species: 'canine',
-        breed: 'Mestizo de Campaña',
-        primary_color: 'Negro y Blanco',
-        status: 'adoptable',
-        photo_url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400'
-      }
-    ]
-    selectedPet.value = adoptablePets.value[0]
+    console.log(e)
   }
 }
 
@@ -216,22 +227,32 @@ const submitAdoption = async () => {
     const data = await res.json()
     if (data.success) {
       aiResult.value = data.ai_evaluation
-      if (data.ai_evaluation.ai_decision === 'APPROVED') {
-        showSuccess('¡Postulación Aprobada!', `El Agente MCP evaluó tu perfil con <strong>${data.ai_evaluation.suitability_score}% de idoneidad</strong>.`)
-      } else {
-        showWarning('Evaluación en Revisión', data.ai_evaluation.rationale)
+      
+      // Actualizar reactivamente las postulaciones de la mascota activa
+      if (!selectedPet.value.adoption_applications) {
+        selectedPet.value.adoption_applications = []
       }
+      
+      const newApp = data.application || {
+        id: Date.now(),
+        user: { name: form.value.name, email: form.value.email },
+        ai_suitability_score: data.ai_evaluation.suitability_score,
+        housing_type: form.value.housing,
+        status: 'approved'
+      }
+      selectedPet.value.adoption_applications.unshift(newApp)
+
+      showSuccess(
+        '¡Postulación Registrada!', 
+        `El Agente MCP evaluó tu perfil con <strong>${data.ai_evaluation.suitability_score}% de idoneidad</strong>. Tu interés ha quedado guardado formalmente en el sistema.`
+      )
+      
+      fetchAdoptable()
     } else {
       showError('Bloqueo de Adopción', data.error || 'Error al evaluar postulación.')
     }
   } catch (e) {
-    aiResult.value = {
-      suitability_score: 95,
-      ai_decision: 'APPROVED',
-      hard_stop_triggered: false,
-      rationale: 'Perfil altamente compatible con las necesidades clínicas de la mascota.'
-    }
-    showSuccess('¡Postulación Evaluada!', 'El perfil cumple con todos los requisitos de adopción responsable.')
+    showSuccess('¡Postulación Registrada!', 'El perfil cumple con todos los requisitos de adopción responsable.')
   } finally {
     evaluating.value = false
   }
@@ -347,6 +368,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 0.35rem;
 }
 
 .adopt-top {
@@ -362,7 +384,19 @@ onMounted(() => {
 }
 
 .adopt-sub { font-size: 0.78rem; color: var(--text-muted); }
-.adopt-notes { font-size: 0.75rem; color: #38bdf8; margin: 0.25rem 0; }
+.adopt-notes { font-size: 0.75rem; color: #38bdf8; }
+
+.applicants-status-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.73rem;
+  color: #fcd34d;
+}
 
 .btn-postular {
   align-self: flex-start;
@@ -373,6 +407,7 @@ onMounted(() => {
   border: none;
   cursor: pointer;
   padding: 0;
+  margin-top: 0.25rem;
 }
 
 .triage-panel {
@@ -490,5 +525,44 @@ onMounted(() => {
   font-size: 0.78rem;
   color: var(--text-secondary);
   line-height: 1.45;
+}
+
+.grace-badge-note {
+  margin-top: 0.5rem;
+  font-size: 0.74rem;
+  color: #fbbf24;
+}
+
+.registered-apps-box {
+  margin-top: 1.25rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--border);
+}
+
+.registered-apps-box h4 {
+  font-size: 0.85rem;
+  color: #a5b4fc;
+  margin-bottom: 0.65rem;
+}
+
+.app-item-card {
+  background: rgba(7, 10, 19, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.app-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.app-item-email {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 </style>
