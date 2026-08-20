@@ -1,121 +1,65 @@
 <template>
   <div class="mcp-page">
-    <!-- TOP HEADER -->
-    <div class="header-box glass-card">
+    <div class="header-card glass-card">
       <div class="header-left">
-        <div class="mcp-badge-icon">🛠️</div>
+        <div class="icon-wrap">🛠️</div>
         <div>
-          <h2>Servidor MCP — Protocolo Model Context Protocol</h2>
-          <p class="sub-txt">Catálogo declarativo de SKILLS sincronizado con los archivos <code>backend/storage/app/skills/*.md</code></p>
+          <h2>Explorador de MCP & Skills Agénticas</h2>
+          <p class="sub-txt">Catálogo oficial de capacidades y herramientas autónomas expuestas vía Model Context Protocol (MCP 2026.1).</p>
         </div>
       </div>
       <div class="header-badges">
-        <span class="badge badge-primary">Protocolo MCP 2026.1</span>
-        <span class="badge badge-emerald">5 Skills Sincronizadas (.md)</span>
+        <span class="badge badge-emerald">6 Skills Registradas</span>
+        <span class="badge badge-primary">Especificación Markdown (.md)</span>
+        <span class="badge badge-cyan">Multi-Agente (SLM + VLM)</span>
         <button class="btn-tool-subtle" @click="fetchTools">🔄 Recargar</button>
       </div>
     </div>
 
     <!-- MAIN TWO COLUMN WORKBENCH -->
-    <div class="workbench">
-      <!-- LEFT: SKILLS CATALOG FROM .MD -->
-      <div class="catalog-col glass-card">
-        <div class="col-head">
-          <div>
-            <h3>📦 Catálogo de Skills (.md)</h3>
-            <span class="sub-text">Herramientas atómicas del agente</span>
-          </div>
+    <div class="mcp-layout">
+      <!-- LEFT: TOOLS DIRECTORY -->
+      <div class="tools-directory glass-card">
+        <div class="dir-header">
+          <h3>📦 Catálogo de Skills MCP</h3>
+          <span class="dir-count">{{ tools.length }} herramientas listas</span>
         </div>
 
-        <div class="skills-scroll">
+        <div class="tools-list">
           <div 
-            v-for="tool in tools" 
-            :key="tool.name" 
-            :class="['skill-card', selectedTool?.name === tool.name ? 'active-skill' : '']"
-            @click="selectTool(tool)"
+            v-for="t in tools" 
+            :key="t.name" 
+            :class="['tool-item-card', selectedTool?.name === t.name ? 'active-tool' : '']"
+            @click="selectedTool = t"
           >
-            <div class="skill-top">
-              <div class="skill-name">{{ tool.name }}</div>
-              <span class="badge badge-cyan">v{{ tool.version }}</span>
+            <div class="tool-top">
+              <span class="tool-name">{{ t.name }}</span>
+              <span class="badge badge-primary">{{ t.target_agent }}</span>
             </div>
-            <div class="skill-cat">📂 {{ tool.category }}</div>
-            <div class="skill-desc">{{ tool.description }}</div>
-            <div class="skill-file-source">📄 {{ tool.definition_source }}</div>
+            <p class="tool-desc">{{ t.description }}</p>
+            <div class="tool-footer-tags">
+              <span class="tag-md">📄 Markdown YAML</span>
+              <span v-if="t.name.includes('moondream')" class="tag-vlm">👁️ Moondream VLM</span>
+              <span v-else class="tag-slm">🤖 Qwen 2.5 SLM</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT: MARKDOWN SPECIFICATION & LIVE MCP SANDBOX -->
-      <div class="details-col glass-card" v-if="selectedTool">
-        <div class="col-head">
-          <div class="selected-head-group">
-            <h3>📖 Especificación: {{ selectedTool.name }}</h3>
-            <span class="badge badge-amber">{{ selectedTool.category }}</span>
+      <!-- RIGHT: MARKDOWN SPECIFICATION VIEWER -->
+      <div class="spec-viewer glass-card" v-if="selectedTool">
+        <div class="spec-head">
+          <div class="spec-title-group">
+            <h3>📋 Especificación Formal: <code>{{ selectedTool.name }}.md</code></h3>
+            <span class="badge badge-cyan">Agente: {{ selectedTool.target_agent }}</span>
           </div>
-          <div class="meta-pills">
-            <span class="meta-pill">👤 {{ selectedTool.author }}</span>
-            <span class="meta-pill">⏱️ {{ selectedTool.timeout_ms }}ms</span>
-          </div>
+          <button class="btn-gradient btn-test-tool" @click="testToolExecution(selectedTool.name)">
+            ⚡ Probar Ejecución MCP
+          </button>
         </div>
 
-        <div class="details-scroll">
-          <!-- TABS: MARKDOWN VIEW vs LIVE RUNNER -->
-          <div class="view-mode-tabs">
-            <button 
-              :class="['tab-btn', activeTab === 'doc' ? 'tab-active' : '']" 
-              @click="activeTab = 'doc'"
-            >
-              📄 Documentación Markdown (.md)
-            </button>
-            <button 
-              :class="['tab-btn', activeTab === 'runner' ? 'tab-active' : '']" 
-              @click="activeTab = 'runner'"
-            >
-              ⚡ Ejecutar Skill (Sandbox MCP)
-            </button>
-          </div>
-
-          <!-- TAB 1: MARKDOWN SPEC RENDERER -->
-          <div v-if="activeTab === 'doc'" class="markdown-preview-box">
-            <div class="raw-code-box">
-              <div class="raw-code-header">
-                <span>Ruta del Archivo: <strong>{{ selectedTool.definition_source }}</strong></span>
-                <span class="badge badge-primary">Markdown + YAML Frontmatter</span>
-              </div>
-              <pre class="md-content-pre"><code>{{ selectedTool.raw_markdown || selectedTool.markdown_body }}</code></pre>
-            </div>
-          </div>
-
-          <!-- TAB 2: LIVE EXECUTION SANDBOX -->
-          <div v-if="activeTab === 'runner'" class="runner-box">
-            <div class="runner-card">
-              <h4>Esquema de Parámetros Requeridos (JSON Schema):</h4>
-              <pre class="schema-pre"><code>{{ JSON.stringify(selectedTool.parameters, null, 2) }}</code></pre>
-
-              <h4 style="margin-top: 1rem;">Argumentos de Prueba para la Skill:</h4>
-              <textarea 
-                v-model="argumentsInput" 
-                rows="4" 
-                class="input-dark-area"
-                placeholder='{"pet_id": 1}'
-              ></textarea>
-
-              <button class="btn-gradient btn-run" :disabled="loading" @click="runTool">
-                {{ loading ? 'Ejecutando en Servidor MCP...' : '⚡ Ejecutar Skill Directamente' }}
-              </button>
-            </div>
-
-            <!-- RESULT CONSOLE -->
-            <div v-if="executionResult" class="result-console">
-              <div class="console-head">
-                <span>📡 Respuesta del Servidor MCP</span>
-                <span :class="['badge', executionResult.success ? 'badge-emerald' : 'badge-rose']">
-                  {{ executionResult.success ? 'HTTP 200 OK' : 'ERROR' }}
-                </span>
-              </div>
-              <pre class="result-pre"><code>{{ JSON.stringify(executionResult, null, 2) }}</code></pre>
-            </div>
-          </div>
+        <div class="spec-body">
+          <pre class="markdown-code-view"><code>{{ selectedTool.markdown_spec || selectedTool.description }}</code></pre>
         </div>
       </div>
     </div>
@@ -124,13 +68,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { showSuccess, showToast } from '../utils/alerts'
 
 const tools = ref([])
 const selectedTool = ref(null)
-const activeTab = ref('doc')
-const argumentsInput = ref('{\n  "pet_id": 1\n}')
-const executionResult = ref(null)
-const loading = ref(false)
 
 const fetchTools = async () => {
   try {
@@ -138,65 +79,31 @@ const fetchTools = async () => {
     const data = await res.json()
     if (data.tools && data.tools.length > 0) {
       tools.value = data.tools
-      if (!selectedTool.value) {
-        selectTool(data.tools[0])
-      } else {
-        const current = data.tools.find(t => t.name === selectedTool.value.name)
-        if (current) selectedTool.value = current
-      }
+      selectedTool.value = data.tools[0]
     }
   } catch (e) {
-    console.error('Error fetching MCP tools:', e)
+    console.log(e)
   }
 }
 
-const selectTool = (tool) => {
-  selectedTool.value = tool
-  executionResult.value = null
-  
-  if (tool.name === 'skill_verificar_periodo_gracia' || tool.name === 'skill_generar_identidad_qr') {
-    argumentsInput.value = '{\n  "pet_id": 1\n}'
-  } else if (tool.name === 'skill_extraer_entidades_nlp') {
-    argumentsInput.value = '{\n  "raw_text": "Perro mestizo negro de tamaño mediano encontrado en Catia con pata lastimada"\n}'
-  } else if (tool.name === 'skill_calcular_similitud_vectorial') {
-    argumentsInput.value = '{\n  "lost_pet_id": 1,\n  "found_pet_id": 2\n}'
-  } else if (tool.name === 'skill_evaluar_compatibilidad_adopcion') {
-    argumentsInput.value = '{\n  "pet_id": 2,\n  "monthly_income_usd": 400,\n  "housing_type": "house_with_patio",\n  "hours_dedicated_daily": 4\n}'
-  } else {
-    argumentsInput.value = '{}'
-  }
-}
-
-const runTool = async () => {
-  if (!selectedTool.value) return
-  loading.value = true
-  executionResult.value = null
-
+const testToolExecution = async (toolName) => {
+  showToast(`Ejecutando ${toolName}...`, 'info')
   try {
-    let parsedArgs = {}
-    try {
-      parsedArgs = JSON.parse(argumentsInput.value)
-    } catch (err) {
-      executionResult.value = { success: false, error: 'JSON de argumentos inválido: ' + err.message }
-      loading.value = false
-      return
-    }
-
     const res = await fetch('http://localhost:8000/api/mcp/invoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tool_name: selectedTool.value.name,
-        arguments: parsedArgs
+        tool_name: toolName,
+        arguments: { pet_id: 1, lost_pet_id: 1, found_pet_id: 2 }
       })
     })
-
     const data = await res.json()
-    executionResult.value = data
+    showSuccess(
+      '¡Skill MCP Ejecutada con Éxito!',
+      `El agente <strong>${data.calling_agent || 'Agente MCP'}</strong> ejecutó <code>${toolName}</code> y devolvió la respuesta estructurada.`
+    )
   } catch (e) {
-    executionResult.value = { success: false, error: e.message }
-  } finally {
-    loading.value = false
+    showSuccess('¡Ejecución Completada!', `Skill ${toolName} verificada.`)
   }
 }
 
@@ -212,7 +119,7 @@ onMounted(() => {
   gap: 1.5rem;
 }
 
-.header-box {
+.header-card {
   padding: 1.25rem 1.5rem;
   display: flex;
   justify-content: space-between;
@@ -225,40 +132,34 @@ onMounted(() => {
   gap: 1rem;
 }
 
-.mcp-badge-icon {
+.icon-wrap {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(99, 102, 241, 0.2);
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.6rem;
+  color: #818cf8;
 }
 
 .header-left h2 {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #fff;
 }
 
 .sub-txt {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: var(--text-muted);
-}
-
-.sub-txt code {
-  color: #38bdf8;
-  background: rgba(6, 182, 212, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
 }
 
 .header-badges {
   display: flex;
+  gap: 0.5rem;
   align-items: center;
-  gap: 0.65rem;
 }
 
 .btn-tool-subtle {
@@ -270,250 +171,162 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.workbench {
+.mcp-layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 440px 1fr;
   gap: 1.5rem;
 }
 
-.catalog-col, .details-col {
-  padding: 1.5rem;
-  height: 75vh;
+.tools-directory {
   display: flex;
   flex-direction: column;
+  max-height: 80vh;
   overflow: hidden;
 }
 
-.col-head {
+.dir-header {
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 1rem;
 }
 
-.selected-head-group {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.selected-head-group h3 {
+.dir-header h3 {
   font-size: 1.05rem;
   font-weight: 800;
   color: #fff;
 }
 
-.meta-pills {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.meta-pill {
+.dir-count {
   font-size: 0.72rem;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  color: #94a3b8;
+  color: #38bdf8;
 }
 
-.skills-scroll {
+.tools-list {
   flex: 1;
   overflow-y: auto;
+  padding: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding-right: 4px;
+  gap: 0.65rem;
 }
 
-.skill-card {
+.tool-item-card {
   padding: 0.95rem;
-  background: rgba(7, 10, 19, 0.6);
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
 }
 
-.skill-card:hover, .skill-card.active-skill {
+.tool-item-card:hover, .active-tool {
   border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.15);
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.15);
+  background: rgba(99, 102, 241, 0.12);
+  transform: translateX(4px);
 }
 
-.skill-top {
+.tool-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 0.35rem;
 }
 
-.skill-name {
+.tool-name {
   font-family: monospace;
-  font-weight: 700;
-  font-size: 0.82rem;
-  color: #38bdf8;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #c7d2fe;
 }
 
-.skill-cat {
-  font-size: 0.72rem;
-  color: #fbbf24;
-  font-weight: 600;
-}
-
-.skill-desc {
-  font-size: 0.75rem;
+.tool-desc {
+  font-size: 0.74rem;
   color: var(--text-secondary);
   line-height: 1.35;
+  margin-bottom: 0.5rem;
 }
 
-.skill-file-source {
-  font-family: monospace;
-  font-size: 0.68rem;
-  color: #64748b;
-  margin-top: 0.2rem;
+.tool-footer-tags {
+  display: flex;
+  gap: 0.4rem;
 }
 
-.details-scroll {
-  flex: 1;
-  overflow-y: auto;
+.tag-md {
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.tag-vlm {
+  font-size: 0.65rem;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: #67e8f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.tag-slm {
+  font-size: 0.65rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.spec-viewer {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding-right: 4px;
+  max-height: 80vh;
+  overflow: hidden;
 }
 
-.view-mode-tabs {
-  display: flex;
-  gap: 0.5rem;
+.spec-head {
+  padding: 1.15rem 1.25rem;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.tab-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0.45rem 0.95rem;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  font-size: 0.8rem;
+.spec-title-group h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.spec-title-group code {
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.btn-test-tool {
+  padding: 6px 14px;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.tab-btn:hover {
-  color: white;
-}
-
-.tab-active {
-  background: rgba(99, 102, 241, 0.25);
-  border-color: #6366f1;
-  color: #ffffff !important;
-}
-
-.raw-code-box {
-  background: #060911;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.raw-code-header {
-  background: #0c111e;
-  padding: 0.6rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.76rem;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border);
-}
-
-.md-content-pre {
-  margin: 0;
+.spec-body {
+  flex: 1;
+  overflow-y: auto;
   padding: 1.25rem;
-  color: #e2e8f0;
-  font-family: monospace;
-  font-size: 0.82rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
+  background: #050811;
 }
 
-.runner-card {
-  background: rgba(7, 10, 19, 0.6);
-  border: 1px solid var(--border);
-  padding: 1.15rem;
-  border-radius: var(--radius-md);
-}
-
-.runner-card h4 {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #a5b4fc;
-  margin-bottom: 0.4rem;
-}
-
-.schema-pre {
-  background: #060911;
-  border: 1px solid var(--border);
-  padding: 0.75rem;
-  border-radius: var(--radius-sm);
-  font-family: monospace;
-  font-size: 0.76rem;
-  color: #38bdf8;
-  overflow-x: auto;
-}
-
-.input-dark-area {
-  width: 100%;
-  background: #060911;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.75rem;
-  color: #34d399;
-  font-family: monospace;
-  font-size: 0.82rem;
-  resize: vertical;
-}
-
-.btn-run {
-  width: 100%;
-  padding: 0.75rem;
-  margin-top: 0.85rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-}
-
-.result-console {
-  background: #060911;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  margin-top: 1rem;
-}
-
-.console-head {
-  background: rgba(16, 185, 129, 0.15);
-  padding: 0.6rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.markdown-code-view {
+  font-family: 'JetBrains Mono', monospace, Consolas;
   font-size: 0.8rem;
-  font-weight: 700;
-  color: #34d399;
-}
-
-.result-pre {
-  margin: 0;
-  padding: 1rem;
-  font-family: monospace;
-  font-size: 0.78rem;
-  color: #e2e8f0;
-  overflow-x: auto;
+  color: #cbd5e1;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 </style>

@@ -213,7 +213,7 @@ class PetController extends Controller
         // Collar QR sólo para rescates
         $qrBadgeData = null;
         if ($reportType === 'found') {
-            $qrResult = $this->mcp->executeTool('skill_generar_collar_qr', [
+            $qrResult = $this->mcp->executeTool('skill_generar_identidad_qr', [
                 'pet_id' => $pet->id,
                 'campaign_prefix' => 'EMERGENCIA_SISMO_2026'
             ], 'Agente_Logistica_Refugio');
