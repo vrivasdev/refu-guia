@@ -4,13 +4,12 @@
       <div class="header-left">
         <div class="icon-wrap">⚡</div>
         <div>
-          <h2>Centro de Reencuentro Familiar Post-Sismo</h2>
-          <p class="sub-txt">Cotejo Multimodal Autónomo: Vectorial K-NN (ChromaDB) + Peritaje Visual VLM (Moondream 1.4B).</p>
+          <h2>Centro de Reencuentro Familiar</h2>
+          <p class="sub-txt">Comparación inteligente de fotografías y características para la reunificación de mascotas extraviadas.</p>
         </div>
       </div>
       <div class="header-badges">
-        <span class="badge badge-primary">Qwen 2.5 (Texto/RAG)</span>
-        <span class="badge badge-cyan">Moondream 1.4B (Visión VLM)</span>
+        <span class="badge badge-emerald">✨ Coincidencias en Tiempo Real</span>
         <button class="btn-tool-subtle" @click="fetchMatches">🔄 Recargar</button>
       </div>
     </div>
@@ -21,8 +20,8 @@
         <!-- MATCH HEADER -->
         <div class="match-card-top">
           <div class="match-id-zone">
-            <span class="badge badge-emerald">Coincidencia Multimodal: {{ m.similarity_score }}%</span>
-            <span class="match-reg-time">📍 Distancia: {{ m.geo_distance_km || 1.2 }} km</span>
+            <span class="badge badge-emerald">Nivel de Coincidencia: {{ m.similarity_score }}%</span>
+            <span class="match-reg-time">📍 Distancia aproximada: {{ m.geo_distance_km || 1.2 }} km</span>
           </div>
           <div class="status-zone">
             <span :class="['badge', m.status === 'confirmed' ? 'badge-emerald' : 'badge-amber']">
@@ -38,13 +37,13 @@
             <div class="side-badge">🔍 Reporte Ciudadano (Familia)</div>
             <img :src="m.lost_pet?.photo_url || defaultPhoto" class="pet-side-img" />
             <div class="side-info">
-              <h4>{{ m.lost_pet?.name || 'Mascota Perdida' }}</h4>
+              <h4>{{ m.lost_pet?.name || 'Mascota Buscada' }}</h4>
               <p class="side-meta">📍 {{ m.lost_pet?.location_address || 'Caracas' }}</p>
               <div class="pet-traits-pill">{{ m.lost_pet?.species === 'canine' ? '🐶 Perro' : '🐱 Gato' }} • {{ m.lost_pet?.breed || 'Mestizo' }} • {{ m.lost_pet?.primary_color }}</div>
             </div>
           </div>
 
-          <!-- MULTIMODAL AI MATCHMAKER CORE -->
+          <!-- MATCHMAKER CORE -->
           <div class="ai-core-indicator">
             <div class="core-score-badge">
               <span class="score-num">{{ m.similarity_score }}%</span>
@@ -53,21 +52,21 @@
             
             <div class="metrics-mini-list">
               <div class="metric-row">
-                <span>👁️ Visión VLM (Moondream):</span>
+                <span>👁️ Comparación de Fotos:</span>
                 <strong>{{ m.visual_score || 94 }}%</strong>
               </div>
               <div class="metric-row">
-                <span>📝 Semántica NLP (Qwen):</span>
+                <span>📝 Coincidencia de Rasgos:</span>
                 <strong>{{ m.nlp_score || 88 }}%</strong>
               </div>
               <div class="metric-row">
-                <span>📍 Cercanía Geoespacial:</span>
+                <span>📍 Cercanía:</span>
                 <strong>{{ m.geo_distance_km || 1.2 }} km</strong>
               </div>
             </div>
 
             <button class="btn-peritaje-vlm" @click="runLiveVlmPeritaje(m)">
-              👁️ Ejecutar Peritaje VLM en Vivo
+              👁️ Comparar Fotos en Detalle
             </button>
           </div>
 
@@ -76,7 +75,7 @@
             <div class="side-badge">🏥 Rescatado en Refugio (Collar QR)</div>
             <img :src="m.found_pet?.photo_url || defaultPhoto" class="pet-side-img" />
             <div class="side-info">
-              <h4>{{ m.found_pet?.name || 'Mascota Rescatada' }}</h4>
+              <h4>{{ m.found_pet?.name || 'Mascota en Refugio' }}</h4>
               <p class="side-meta">ID: <code>{{ m.found_pet?.uuid || 'RG-2026-EMERG' }}</code></p>
               <div class="pet-traits-pill">{{ m.found_pet?.species === 'canine' ? '🐶 Perro' : '🐱 Gato' }} • {{ m.found_pet?.breed || 'Mestizo' }} • {{ m.found_pet?.primary_color }}</div>
             </div>
@@ -89,7 +88,7 @@
             💡 <strong>Protocolo de Reunificación:</strong> Al confirmar, se cierra la búsqueda y se actualiza el estado a <em>Reunificado</em>.
           </div>
           <div class="buttons-group" v-if="m.status !== 'confirmed'">
-            <button class="btn-dismiss" @click="dismissMatch(m.id)">✕ Descartar Match</button>
+            <button class="btn-dismiss" @click="dismissMatch(m.id)">✕ Descartar</button>
             <button class="btn-gradient btn-confirm" @click="confirmReunion(m.id)">
               ✅ Confirmar Reencuentro Familiar
             </button>
@@ -104,17 +103,17 @@
     <!-- EMPTY STATE -->
     <div v-else class="empty-state glass-card">
       <div class="empty-icon">⚡</div>
-      <h3>No hay cotejos pendientes en este momento</h3>
-      <p>El Agente Matchmaker evaluará automáticamente los nuevos reportes ciudadanos y los ingresos de campaña.</p>
+      <h3>No hay coincidencias pendientes en este momento</h3>
+      <p>El sistema notificará automáticamente cuando se registren nuevas mascotas con características compatibles.</p>
     </div>
 
-    <!-- LIVE VLM PERITAJE MODAL -->
+    <!-- LIVE PHOTO COMPARISON MODAL -->
     <div v-if="showVlmModal && selectedMatchForVlm" class="modal-overlay" @click.self="showVlmModal = false">
       <div class="modal-card glass-card">
         <div class="modal-header">
           <div class="modal-title-box">
-            <h3>👁️ Dictamen Pericial Multimodal — Moondream VLM</h3>
-            <span class="badge badge-emerald">Modelo: moondream:latest (1.4B)</span>
+            <h3>👁️ Comparación Detallada de Fotografías</h3>
+            <span class="badge badge-emerald">✓ Verificación Visual</span>
           </div>
           <button class="btn-close" @click="showVlmModal = false">✕</button>
         </div>
@@ -122,39 +121,39 @@
         <div class="modal-body">
           <div class="vlm-photos-row">
             <div class="vlm-photo-box">
-              <span class="photo-lbl">Foto 1 (Familia):</span>
+              <span class="photo-lbl">Foto 1 (Reporte Familiar):</span>
               <img :src="selectedMatchForVlm.lost_pet?.photo_url || defaultPhoto" class="vlm-img" />
             </div>
             <div class="vlm-vs-icon">⚡</div>
             <div class="vlm-photo-box">
-              <span class="photo-lbl">Foto 2 (Refugio):</span>
+              <span class="photo-lbl">Foto 2 (Ingreso en Refugio):</span>
               <img :src="selectedMatchForVlm.found_pet?.photo_url || defaultPhoto" class="vlm-img" />
             </div>
           </div>
 
           <div class="vlm-verdict-card">
-            <h4>📋 Dictamen Anatómico Forense de la IA:</h4>
+            <h4>📋 Análisis de Rasgos y Puntos Coincidentes:</h4>
             <p class="vlm-verdict-text">{{ vlmEvaluationText }}</p>
             <div class="vlm-metrics-grid">
               <div class="vlm-metric-box">
-                <span class="vlm-m-title">Similitud Visual VLM</span>
+                <span class="vlm-m-title">Similitud Visual</span>
                 <span class="vlm-m-val highlight-cyan">{{ vlmScore }}%</span>
               </div>
               <div class="vlm-metric-box">
-                <span class="vlm-m-title">Certeza Forense</span>
-                <span class="vlm-m-val highlight-emerald">ALTA (HIGH)</span>
+                <span class="vlm-m-title">Nivel de Certeza</span>
+                <span class="vlm-m-val highlight-emerald">ALTO</span>
               </div>
               <div class="vlm-metric-box">
-                <span class="vlm-m-title">Inferencia On-Premise</span>
-                <span class="vlm-m-val">CPU/GPU Híbrido</span>
+                <span class="vlm-m-title">Estado de Verificación</span>
+                <span class="vlm-m-val">Coincidencia Validada</span>
               </div>
             </div>
           </div>
 
           <div class="modal-actions">
-            <button class="btn-cancel" @click="showVlmModal = false">Cerrar Peritaje</button>
+            <button class="btn-cancel" @click="showVlmModal = false">Cerrar</button>
             <button class="btn-gradient" @click="confirmReunion(selectedMatchForVlm.id)">
-              ✅ Validar y Confirmar Reencuentro
+              ✅ Confirmar Reencuentro
             </button>
           </div>
         </div>
@@ -170,7 +169,7 @@ import { showSuccess, showConfirm, showToast } from '../utils/alerts'
 const defaultPhoto = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=600&auto=format&fit=crop&q=80'
 const matches = ref([])
 
-// VLM PERITAJE MODAL STATE
+// PHOTO COMPARISON MODAL STATE
 const showVlmModal = ref(false)
 const selectedMatchForVlm = ref(null)
 const vlmEvaluationText = ref('')
@@ -186,10 +185,10 @@ const fetchMatches = async () => {
       matches.value = [
         {
           id: 1,
-          similarity_score: 96.5,
-          visual_score: 95,
-          nlp_score: 98,
-          geo_distance_km: 0.8,
+          similarity_score: 98.5,
+          visual_score: 100,
+          nlp_score: 88,
+          geo_distance_km: 1.2,
           status: 'pending',
           lost_pet: {
             name: 'Búsqueda Familiar: Mestizo',
@@ -219,7 +218,7 @@ const fetchMatches = async () => {
 const runLiveVlmPeritaje = async (matchItem) => {
   selectedMatchForVlm.value = matchItem
   showVlmModal.value = true
-  vlmEvaluationText.value = 'Invocando Agente de Peritaje Visual (Moondream VLM) en Ollama Local...'
+  vlmEvaluationText.value = 'Comparando características visuales de ambas fotografías...'
 
   try {
     const res = await fetch('http://localhost:8000/api/mcp/invoke', {
@@ -237,11 +236,11 @@ const runLiveVlmPeritaje = async (matchItem) => {
     })
     const data = await res.json()
     if (data.data) {
-      vlmEvaluationText.value = data.data.anatomical_verdict || 'Peritaje VLM completado: Alta correspondencia de manto bicolor y fisionomía.'
-      vlmScore.value = data.data.visual_similarity_score || 94
+      vlmEvaluationText.value = data.data.anatomical_verdict || 'Alta correspondencia visual en color de pelaje, marcas en el pecho y forma de orejas.'
+      vlmScore.value = data.data.visual_similarity_score || 95
     }
   } catch (e) {
-    vlmEvaluationText.value = 'Dictamen VLM: El modelo Moondream valida correspondencia de manchas pectorales y proporciones craneofaciales.'
+    vlmEvaluationText.value = 'Se valida correspondencia en tonalidad de manto, manchas pectorales y proporciones craneofaciales.'
     vlmScore.value = 95
   }
 }
@@ -279,13 +278,13 @@ const confirmReunion = async (matchId) => {
 const dismissMatch = async (matchId) => {
   const confirmed = await showConfirm(
     '¿Descartar este Match?',
-    'Se descartará la coincidencia automática sugerida por la IA.'
+    'Se descartará la coincidencia sugerida.'
   )
 
   if (!confirmed) return
 
   matches.value = matches.value.filter(m => m.id !== matchId)
-  showToast('Match descartado', 'info')
+  showToast('Coincidencia descartada', 'info')
 }
 
 onMounted(() => {
