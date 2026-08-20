@@ -1272,4 +1272,32 @@ onUnmounted(() => {
   text-decoration: none;
   cursor: pointer;
 }
+
+.vlm-chat-card {
+  margin-top: 0.75rem;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+}
+
+.vlm-chip-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+
+.vlm-conf-tag {
+  font-size: 0.7rem;
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.vlm-desc-text {
+  font-size: 0.78rem;
+  color: #e0f2fe;
+  line-height: 1.4;
+}
+
 </style>

@@ -22,6 +22,11 @@ class LocalSlmService
     /**
      * Inferencia estricta: Solo ejecuta si el modelo Ollama está en línea.
      */
+    public function sanitizeInput(string $prompt): string
+    {
+        return $this->sanitizer->sanitize($prompt);
+    }
+
     public function generate(string $prompt, string $systemPrompt = '', array $options = []): array
     {
         $sanitizedPrompt = $this->sanitizer->sanitize($prompt);
